@@ -29,8 +29,11 @@ Project Frontier is a Next.js 16 App Router modular monolith. The Next server ow
 ## API surface
 
 - `GET /frontier-api/dashboard` — authenticated `Dashboard` data.
+- `GET /frontier-api/inventory` — authenticated resource stacks, unique gear, item details, player progression and equipped slots.
+- `PUT /frontier-api/equipment/{slot}` — authenticated strict JSON `{ "instanceId": "<UUID>" }`; equips owned, compatible gear and returns the updated inventory. Slots are `hand`, `body` and `head`.
+- `DELETE /frontier-api/equipment/{slot}` — authenticated unequip; returns the updated inventory. Retrying an empty slot is harmless.
 - `POST /frontier-api/activities` — authenticated strict JSON command `{ "definitionId": "gather-wood", "requestId": "<UUID>" }`. Returns `{ "activity": ... }`.
-- `POST /frontier-api/activities/{id}/claim` — authenticated owner-only claim. The request body is ignored; reward and finish time are derived exclusively from persisted state and database time. Returns `{ "activity": ..., "ledger": ... }`.
+- `POST /frontier-api/activities/{id}/claim` — authenticated owner-only claim. The request body is ignored; reward and finish time are derived exclusively from persisted state and database time. Returns activity, ledger, reward-granted flag, levels gained and progression.
 - `GET /frontier-api/health` — public sanitized app/database status; database configuration or connection failures report HTTP 503.
 
 ## Architecture and integrity
@@ -54,6 +57,14 @@ appropriate level immediately. A first successful claim reports whether it grant
 how many levels were gained; retrying a claim grants nothing and never repeats level-up feedback.
 Signing out does not delete the character; signing back in with the same Clerk identity restores it.
 
+## Inventory and equipment foundation
+
+`/inventory` separates persistent resource stacks from unique equipment instances, with inspectable item details and Hand, Body and Head slots. New and returning players receive one Field Axe (Hand) and one Work Vest (Body); stable per-player grant keys prevent repeated grants. Equipment has no combat or gathering effects in this milestone.
+
+Ownership comes exclusively from the authenticated player. Equip and unequip use the same player-row lock as gathering, validate item/slot compatibility before changing anything, and never delete displaced equipment. Database constraints enforce one instance per slot and one copy of each starter grant. Missing and foreign-owned gear return the same 404; invalid requests and incompatible slots return 400.
+
+Development runs use `.next-dev`, while production builds retain `.next`, so building does not overwrite the live Preview's generated route cache. Generated migration foreign keys use the active `search_path` rather than hard-coding `public`, keeping integration tests fully isolated.
+
 ## Tests and limitations
 
 ```sh
@@ -62,6 +73,6 @@ DATABASE_URL='postgresql://...' pnpm --filter @workspace/project-frontier test:i
 DATABASE_URL='postgresql://...' pnpm --filter @workspace/project-frontier test
 ```
 
-PostgreSQL integration tests require a real PostgreSQL `DATABASE_URL` and fail explicitly if it is missing. They refuse to run with `NODE_ENV=production` or `FRONTIER_MIGRATION_ENV=production`. Each run creates a random isolated schema, sets it as the connection `search_path`, stores Drizzle migration history in that schema, and drops only that test schema. They cover concurrent Clerk identity provisioning, 30-second start timing, persistence across repository instances, idempotent/concurrent start, early claim rejection without side effects, owner authorization, concurrent and sequential duplicate claim, exactly-once rewards, and level advancement with same-identity progression persistence. Unit tests cover pure command validation, time calculation, and level thresholds.
+PostgreSQL integration tests require a real PostgreSQL `DATABASE_URL` and fail explicitly if it is missing. They refuse to run with `NODE_ENV=production` or `FRONTIER_MIGRATION_ENV=production`. Each run creates a random isolated schema, sets it as the connection `search_path`, stores Drizzle migration history in that schema, and drops only that test schema. They cover concurrent identity provisioning, gathering timing and persistence, early/foreign claims, exactly-once concurrent rewards, level advancement, inventory display data, one-time starter grants for new and returning players, equip/unequip restoration, incompatible/missing/foreign items, forged identity fields and concurrent replacement without equipment loss. Unit tests cover command validation, item definitions, time calculation and level thresholds.
 
-The Playwright configuration and public landing/health smoke specs are provided with `pnpm --filter @workspace/project-frontier test:e2e`. They were not run as part of backend implementation. E2E does not authenticate or bypass Clerk. This slice intentionally defers all game content and mechanics beyond the single gather-wood activity, including simulation, cancellation, trading, combat, and admin tooling.
+The checked-in Playwright smoke specs (`test:e2e`) cover public landing/health behavior only; they do not authenticate or exercise inventory. Signed-in inventory and gathering are verified separately with an isolated development Clerk identity. Beyond gathering, resources, progression and basic equipment management, other game systems remain deferred: no combat, pets, marketplace, crafting, quests, guilds, housing or final art.

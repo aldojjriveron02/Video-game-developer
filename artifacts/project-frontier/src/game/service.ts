@@ -3,6 +3,8 @@ import { getActivityDefinition, getGatheringDefinition } from "../content/gather
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
+import { EQUIPMENT_SLOTS, getItemDefinition, type EquipmentSlot } from "../content/items";
+import { parseEquipCommand, parseEquipmentSlot, type InventoryState, type InventoryView } from "./equipment";
 
 export type Player = {
   id: string;
@@ -43,6 +45,9 @@ export interface GameRepository {
   getDashboard(playerId: string): Promise<Omit<Dashboard, "gathering" | "progression">>;
   startActivity(playerId: string, command: StartActivityCommand): Promise<ActivityRecord>;
   claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity>;
+  getInventory(playerId: string): Promise<InventoryState>;
+  equip(playerId: string, instanceId: string, slot: EquipmentSlot): Promise<void>;
+  unequip(playerId: string, slot: EquipmentSlot): Promise<void>;
 }
 
 export function parseStartActivityCommand(input: unknown): StartActivityCommand {
@@ -87,5 +92,44 @@ export class GameService {
 
   async claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity> {
     return this.repository.claimActivity(playerId, activityId);
+  }
+
+  async inventoryForPlayer(playerId: string): Promise<InventoryView> {
+    const state = await this.repository.getInventory(playerId);
+    const equipment = state.equipment.map((entry) => {
+      const item = getItemDefinition(entry.itemId);
+      if (!item || item.kind !== "equipment") {
+        throw new GameError("configuration_error", "Equipment definition is unavailable.");
+      }
+      return { id: entry.id, item, equippedSlot: entry.equippedSlot, acquiredAt: entry.acquiredAt };
+    });
+    return {
+      player: state.player,
+      progression: progressionForXp(state.player.xp),
+      resources: state.resources.map((entry) => {
+        const item = getItemDefinition(entry.itemId);
+        if (!item || item.kind !== "resource") {
+          throw new GameError("configuration_error", "Resource definition is unavailable.");
+        }
+        return { item, quantity: entry.quantity };
+      }),
+      equipment,
+      slots: EQUIPMENT_SLOTS.map(({ id, label }) => ({
+        slot: id, label, equipmentId: equipment.find((entry) => entry.equippedSlot === id)?.id ?? null,
+      })),
+    };
+  }
+
+  async equipForPlayer(playerId: string, rawSlot: unknown, input: unknown): Promise<InventoryView> {
+    const slot = parseEquipmentSlot(rawSlot);
+    const { instanceId } = parseEquipCommand(input);
+    await this.repository.equip(playerId, instanceId, slot);
+    return this.inventoryForPlayer(playerId);
+  }
+
+  async unequipForPlayer(playerId: string, rawSlot: unknown): Promise<InventoryView> {
+    const slot = parseEquipmentSlot(rawSlot);
+    await this.repository.unequip(playerId, slot);
+    return this.inventoryForPlayer(playerId);
   }
 }

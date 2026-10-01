@@ -52,3 +52,24 @@ body {
 .empty { color: var(--muted); font-size: .9rem; padding: .5rem 0; font-style: italic; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 .auth-page { min-height: 100dvh; display: grid; place-items: center; padding: 2rem 1rem; }
+
+/* inventory */
+.pnav { background: #34463a; border-top: 1px solid rgba(232,224,204,.15); }
+.pnav .wrap { display: flex; gap: .25rem; overflow-x: auto; }
+.pnav a { color: var(--paper); text-decoration: none; font: 500 .8rem "IBM Plex Mono", monospace; letter-spacing: .06em; text-transform: uppercase; padding: .85rem .75rem; min-height: 2.75rem; display: inline-flex; align-items: center; border-bottom: 3px solid transparent; white-space: nowrap; }
+.pnav a:hover { background: rgba(255,255,255,.07); }
+.pnav a[aria-current="page"] { border-bottom-color: var(--signal); font-weight: 600; }
+.pnav a:focus-visible { outline-offset: -3px; }
+.slot-grid { display: grid; gap: .75rem; }
+@media (min-width: 640px) { .slot-grid { grid-template-columns: repeat(3, 1fr); } }
+.slot { border: 1px solid var(--line); background: var(--paper); border-radius: 3px; padding: .8rem; display: grid; gap: .5rem; align-content: start; }
+.slot.filled { border-color: var(--ok); border-left-width: 4px; }
+.slot-name { font-family: "IBM Plex Mono", monospace; font-weight: 600; }
+.tag { display: inline-block; font: 500 .68rem "IBM Plex Mono", monospace; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--line); padding: .05rem .4rem; border-radius: 2px; color: var(--muted); }
+.tag.on { border-color: var(--ok); color: var(--ok); background: #e2ead9; }
+.item { border-top: 1px dashed var(--line); padding: .6rem 0; }
+.item:first-of-type { border-top: 0; }
+.item-head { display: flex; justify-content: space-between; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.item-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.btn.sm { min-height: 2.75rem; padding: .4rem .8rem; font-size: .8rem; }
+.detail { margin: .5rem 0 0; padding: .6rem .8rem; background: var(--paper); border-left: 3px solid var(--line); font-size: .88rem; }

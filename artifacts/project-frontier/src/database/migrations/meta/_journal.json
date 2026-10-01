@@ -8,6 +8,13 @@
       "when": 1790884717586,
       "tag": "0000_typical_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790892333213,
+      "tag": "0001_magenta_alex_power",
+      "breakpoints": true
     }
   ]
 }

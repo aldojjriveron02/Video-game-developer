@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import type { ActivityResponse, ClaimResponse, Dashboard, Reward } from "@/game/contracts";
 import { Brand } from "./brand";
+import Link from "next/link";
+import { PlayerNav } from "./player-nav";
 import { ProgressionPanel } from "./progression-panel";
 
 type ApiError = { error: string; code: string };
@@ -131,6 +133,7 @@ export function DashboardClient({ userId }: { userId: string }) {
           <UserButton />
         </div>
       </header>
+      <PlayerNav current="dashboard" />
       <main className="wrap" style={{ padding: "1.5rem 1.25rem 4rem" }} aria-busy={!data && !loadError}>
         {loadError && (
           <div className="alert" role="alert" style={{ marginBottom: "1rem" }}>
@@ -214,6 +217,7 @@ export function DashboardClient({ userId }: { userId: string }) {
               <section className="panel" aria-labelledby="inv">
                 <h2 id="inv">Resources · Inventory</h2>
                 <p className="muted" style={{ fontSize: ".8rem", margin: "0 0 .5rem" }}>Stored on your character, including after signing out.</p>
+                <p style={{ margin: "0 0 .5rem" }}><Link href="/inventory" className="mono" style={{ color: "var(--signal)" }}>Open full inventory &amp; equipment</Link></p>
                 {data.inventory.length === 0 ? <p className="empty">No resources yet. Complete gathering and claim your first reward.</p> :
                   data.inventory.map((i) => (
                     <div className="row" key={i.itemId}><span style={{ textTransform: "capitalize" }}>{i.itemId.replaceAll("-", " ")}</span><span className="mono">{i.quantity.toLocaleString()}</span></div>

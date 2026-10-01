@@ -11,6 +11,8 @@ const allowedPreviewOrigins = [
 ].filter((origin): origin is string => Boolean(origin));
 
 const config: NextConfig = {
+  // Keep a production build from invalidating the live Preview's generated files.
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   poweredByHeader: false,
   allowedDevOrigins: allowedPreviewOrigins,
   experimental: { cpus: 2 },

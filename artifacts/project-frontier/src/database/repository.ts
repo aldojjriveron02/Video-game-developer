@@ -5,6 +5,9 @@ import type { FrontierDatabase } from "./client";
 import type { Reward } from "../game/contracts";
 import { GameError } from "../game/errors";
 import { progressionForXp } from "../game/progression";
+import { EquipmentRepository, grantStarterEquipment } from "./equipment-repository";
+import type { EquipmentSlot } from "../content/items";
+import type { InventoryState } from "../game/equipment";
 import { getActivityDefinition } from "../content/gathering";
 import type {
   ActivityRecord,
@@ -70,7 +73,10 @@ function activityView(activity: ActivityRecord) {
 }
 
 export class PostgresGameRepository implements GameRepositoryContract {
-  constructor(private readonly database: FrontierDatabase) {}
+  private readonly equipmentRepository: EquipmentRepository;
+  constructor(private readonly database: FrontierDatabase) {
+    this.equipmentRepository = new EquipmentRepository(database);
+  }
 
   async resolveClerkIdentity(clerkUserId: string, displayName: string): Promise<Player> {
     const normalizedName =
@@ -89,7 +95,10 @@ export class PostgresGameRepository implements GameRepositoryContract {
           LIMIT 1
         `),
       )[0];
-      if (existing) return mapPlayer(existing);
+      if (existing) {
+        await grantStarterEquipment(transaction, String(existing.id));
+        return mapPlayer(existing);
+      }
 
       const playerId = randomUUID();
       await transaction.execute(sql`
@@ -108,8 +117,24 @@ export class PostgresGameRepository implements GameRepositoryContract {
         `),
       )[0];
       if (!created) throw new Error("New player row was not returned.");
+      await grantStarterEquipment(transaction, playerId);
       return mapPlayer(created);
     });
+  }
+
+  async getInventory(playerId: string): Promise<InventoryState> {
+    const [dashboard, equipment] = await Promise.all([
+      this.getDashboard(playerId), this.equipmentRepository.list(playerId),
+    ]);
+    return { player: dashboard.player, resources: dashboard.inventory, equipment };
+  }
+
+  equip(playerId: string, instanceId: string, slot: EquipmentSlot) {
+    return this.equipmentRepository.equip(playerId, instanceId, slot);
+  }
+
+  unequip(playerId: string, slot: EquipmentSlot) {
+    return this.equipmentRepository.unequip(playerId, slot);
   }
 
   async getDashboard(playerId: string) {

@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { Reward } from "../game/contracts";
+import type { EquipmentSlot } from "../content/items";
 
 export const players = pgTable(
   "players",
@@ -109,10 +110,30 @@ export const rewardLedger = pgTable(
   ],
 );
 
+export const equipmentInstances = pgTable(
+  "equipment_instances",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    playerId: uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    grantKey: text("grant_key"),
+    equippedSlot: varchar("equipped_slot", { length: 16 }).$type<EquipmentSlot>(),
+    acquiredAt: timestamp("acquired_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("equipment_starter_grant_unique").on(table.playerId, table.grantKey),
+    uniqueIndex("equipment_one_item_per_slot").on(table.playerId, table.equippedSlot)
+      .where(sql`${table.equippedSlot} IS NOT NULL`),
+    index("equipment_player_acquired_idx").on(table.playerId, table.acquiredAt),
+    check("equipment_slot_valid", sql`${table.equippedSlot} IS NULL OR ${table.equippedSlot} IN ('hand', 'body', 'head')`),
+  ],
+);
+
 export const frontierSchema = {
   players,
   clerkIdentities,
   activities,
   inventory,
   rewardLedger,
+  equipmentInstances,
 };

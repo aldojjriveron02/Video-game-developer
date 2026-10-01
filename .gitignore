@@ -6,6 +6,7 @@ tmp
 out-tsc
 *.tsbuildinfo
 .next/
+.next-dev/
 .env*
 !.env.example
 playwright-report/
