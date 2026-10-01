@@ -5,6 +5,11 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+.next/
+.env*
+!.env.example
+playwright-report/
+test-results/
 .expo
 .expo-shared
 

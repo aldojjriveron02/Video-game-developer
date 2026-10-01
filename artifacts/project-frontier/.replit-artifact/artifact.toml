@@ -1,0 +1,34 @@
+kind = "web"
+previewPath = "/"
+title = "Project Frontier"
+description = "PF-001: a server-authoritative idle MMO foundation with authenticated players and a timed gathering vertical slice, implemented as a Next.js modular monolith."
+version = "1.0.0"
+id = "artifacts/project-frontier"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/", "/api/__clerk" ]
+localPort = 22807
+
+[services.development]
+run = "pnpm --filter @workspace/project-frontier run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/project-frontier", "run", "build"]
+
+[services.production.run]
+args = ["pnpm", "--filter", "@workspace/project-frontier", "run", "serve"]
+
+[services.production.run.env]
+PORT = "22807"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/frontier-api/health"
+
+[services.env]
+PORT = "22807"
+BASE_PATH = "/"

@@ -1,45 +1,42 @@
-# [Project name]
+# Project Frontier
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+PF-001 is a minimal server-authoritative idle MMO foundation, not the full game.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Replit workflow: `artifacts/project-frontier: web`.
+- `pnpm --filter @workspace/project-frontier dev` — Next.js development server.
+- `pnpm --filter @workspace/project-frontier build` — production build including TypeScript checking.
+- `pnpm --filter @workspace/project-frontier typecheck` — standalone TypeScript check.
+- `pnpm --filter @workspace/project-frontier test` — unit and real PostgreSQL integration tests.
+- `pnpm --filter @workspace/project-frontier db:migrate` — development-only Drizzle migrations.
+- `pnpm --filter @workspace/project-frontier db:seed` — validate versioned content; no fake player seed.
+- Production schema changes use Replit Publish; never run migrations on startup or in builds.
 
-## Stack
+## Stack & Structure
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+The runnable game lives entirely in `artifacts/project-frontier`: Next.js 16 App Router, React, Tailwind CSS, Clerk, PostgreSQL, Drizzle, Vitest, and Playwright configuration.
 
-## Where things live
+- `src/app` — pages and Next route handlers.
+- `src/components/frontier` — intentionally simple UI.
+- `src/content` — version-controlled gathering definitions.
+- `src/game` — domain contracts, commands, service boundaries.
+- `src/server` — auth adapter, environment validation, service wiring, API errors.
+- `src/database` — server-only connection, repository, schema, migrations, content seed.
+- `tests` — unit and isolated-schema PostgreSQL integration tests.
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+The pre-existing shared Express API and Canvas are unused templates, not a separate game backend. Do not add game logic to them or shared generated API packages.
 
-## Architecture decisions
+## Product Constraints
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Preserve a modular monolith. Do not replace Next.js with the original Vite scaffold.
+- Clerk identity remains separate from internal player UUIDs.
+- The server owns timestamps, rewards, completion decisions, and persistent state.
+- One outstanding gathering activity per player; completion is evaluated on claim, never continuously simulated.
+- Player-row locks serialize mutations; claims atomically update activity, balances, inventory, and the uniquely keyed ledger.
+- Repeating a start request ID or claiming again must return the original result without extra rewards.
+- Do not add combat, pets, marketplaces, crafting, quests, guilds, housing, businesses, seasons, final art, or balancing without a new request.
 
 ## Pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+See `README.md` and `artifacts/project-frontier/README.md` for setup, endpoints, and verification limitations.
