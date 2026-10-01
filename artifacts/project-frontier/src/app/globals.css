@@ -45,6 +45,7 @@ body {
 .row { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-top: 1px dashed var(--line); font-size: .9rem; }
 .row:first-of-type { border-top: 0; }
 .alert { border: 1px solid var(--bad); background: #f3dcd3; color: var(--bad); padding: .75rem 1rem; border-radius: 3px; display: flex; gap: 1rem; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.reward-notice { border: 1px solid var(--ok); background: #e2ead9; color: var(--moss); padding: .75rem 1rem; border-radius: 3px; display: flex; gap: .75rem; justify-content: space-between; align-items: center; flex-wrap: wrap; }
 .skel { background: linear-gradient(90deg, #d9d0b8, #e6dfca, #d9d0b8); background-size: 200% 100%; animation: sh 1.4s infinite linear; border-radius: 3px; }
 @keyframes sh { to { background-position: -200% 0; } }
 .muted { color: var(--muted); }

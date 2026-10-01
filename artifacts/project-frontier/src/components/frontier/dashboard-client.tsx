@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import type { ActivityResponse, ClaimResponse, Dashboard, Reward } from "@/game/contracts";
 import { Brand } from "./brand";
+import { ProgressionPanel } from "./progression-panel";
 
 type ApiError = { error: string; code: string };
 const MAX_POLLS = 20;
@@ -31,6 +32,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   const [data, setData] = useState<Dashboard | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [claimNotice, setClaimNotice] = useState<ClaimResponse | null>(null);
   const [busy, setBusy] = useState<null | "start" | "claim">(null);
   const [now, setNow] = useState(() => Date.now());
   const offset = useRef(0);
@@ -55,6 +57,9 @@ export function DashboardClient({ userId }: { userId: string }) {
 
   useEffect(() => {
     alive.current = true;
+    setData(null);
+    setClaimNotice(null);
+    requestId.current = null;
     load();
     const onFocus = () => { polls.current = 0; load(); };
     const onVis = () => { if (document.visibilityState === "visible") onFocus(); };
@@ -86,6 +91,7 @@ export function DashboardClient({ userId }: { userId: string }) {
 
   async function start() {
     if (!data) return;
+    setClaimNotice(null);
     setBusy("start"); setActionError(null);
     requestId.current ??= crypto.randomUUID();
     try {
@@ -107,7 +113,8 @@ export function DashboardClient({ userId }: { userId: string }) {
     if (!active) return;
     setBusy("claim"); setActionError(null);
     try {
-      await api<ClaimResponse>(`/activities/${encodeURIComponent(active.id)}/claim`, { method: "POST" });
+      const result = await api<ClaimResponse>(`/activities/${encodeURIComponent(active.id)}/claim`, { method: "POST" });
+      if (result.rewardGranted) setClaimNotice(result);
       polls.current = 0;
       await load();
     } catch (e) {
@@ -143,11 +150,26 @@ export function DashboardClient({ userId }: { userId: string }) {
             <div className="grid two">
               <section className="panel" aria-label="Gold">
                 <h2>Gold</h2><div className="stat">{data.player.gold.toLocaleString()}</div>
+                <p className="muted" style={{ fontSize: ".8rem", marginBottom: 0 }}>Saved to your character</p>
               </section>
-              <section className="panel" aria-label="Experience">
-                <h2>XP</h2><div className="stat">{data.player.xp.toLocaleString()}</div>
-              </section>
+              <ProgressionPanel progression={data.progression} />
             </div>
+
+            {claimNotice && (
+              <div className="reward-notice" role="status">
+                <div>
+                  <strong>{claimNotice.levelsGained > 0
+                    ? `Level up! You reached level ${claimNotice.progression.level}.`
+                    : "Rewards stored."}</strong>
+                  <div className="mono" style={{ fontSize: ".85rem" }}>
+                    +{claimNotice.activity.reward.quantity} {claimNotice.activity.reward.itemId}
+                    {" · "}+{claimNotice.activity.reward.gold} gold
+                    {" · "}+{claimNotice.activity.reward.xp} XP
+                  </div>
+                </div>
+                <button className="btn ghost" onClick={() => setClaimNotice(null)} aria-label="Dismiss reward notification">Dismiss</button>
+              </div>
+            )}
 
             <section className="panel" aria-labelledby="job">
               <h2 id="job">Assignment</h2>
@@ -190,10 +212,11 @@ export function DashboardClient({ userId }: { userId: string }) {
 
             <div className="grid two">
               <section className="panel" aria-labelledby="inv">
-                <h2 id="inv">Inventory</h2>
-                {data.inventory.length === 0 ? <p className="empty">Nothing stored yet.</p> :
+                <h2 id="inv">Resources · Inventory</h2>
+                <p className="muted" style={{ fontSize: ".8rem", margin: "0 0 .5rem" }}>Stored on your character, including after signing out.</p>
+                {data.inventory.length === 0 ? <p className="empty">No resources yet. Complete gathering and claim your first reward.</p> :
                   data.inventory.map((i) => (
-                    <div className="row" key={i.itemId}><span>{i.itemId}</span><span className="mono">{i.quantity}</span></div>
+                    <div className="row" key={i.itemId}><span style={{ textTransform: "capitalize" }}>{i.itemId.replaceAll("-", " ")}</span><span className="mono">{i.quantity.toLocaleString()}</span></div>
                   ))}
               </section>
               <section className="panel" aria-labelledby="rec">

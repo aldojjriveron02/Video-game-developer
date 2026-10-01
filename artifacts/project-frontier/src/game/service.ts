@@ -2,6 +2,7 @@ import type { Dashboard, Reward } from "./contracts";
 import { getActivityDefinition, getGatheringDefinition } from "../content/gathering";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
+import { progressionForXp, type Progression } from "./progression";
 
 export type Player = {
   id: string;
@@ -32,11 +33,14 @@ export type LedgerRecord = {
 export type ClaimedActivity = {
   activity: ActivityRecord;
   ledger: LedgerRecord;
+  rewardGranted: boolean;
+  levelsGained: number;
+  progression: Progression;
 };
 
 export interface GameRepository {
   resolveClerkIdentity(clerkUserId: string, displayName: string): Promise<Player>;
-  getDashboard(playerId: string): Promise<Omit<Dashboard, "gathering">>;
+  getDashboard(playerId: string): Promise<Omit<Dashboard, "gathering" | "progression">>;
   startActivity(playerId: string, command: StartActivityCommand): Promise<ActivityRecord>;
   claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity>;
 }
@@ -61,6 +65,7 @@ export class GameService {
     const definition = getGatheringDefinition();
     return {
       ...dashboard,
+      progression: progressionForXp(dashboard.player.xp),
       gathering: {
         id: definition.id,
         name: definition.name,

@@ -43,6 +43,17 @@ Project Frontier is a Next.js 16 App Router modular monolith. The Next server ow
 - The server does not simulate progress in a background job. Activity time is represented by persisted start/finish timestamps and evaluated at claim.
 - `src/proxy.ts` runs Clerk middleware with host-aware publishable-key/proxy configuration. API handlers still perform their own signed-in and player-ownership checks; Clerk middleware is never bypassed for tests.
 
+## Player resources and progression
+
+Claimed gathering rewards persist in the player's PostgreSQL inventory, gold balance, and lifetime XP.
+The dashboard shows stored resources, level, lifetime XP, and progress toward the next level.
+Level is derived from lifetime XP rather than stored separately, so it cannot drift from the saved XP.
+Everyone starts at level 1; advancing from level L costs 24 × L XP (level 2 at 24 total XP,
+level 3 at 72, level 4 at 144). Existing players retain all earned resources and receive the
+appropriate level immediately. A first successful claim reports whether it granted rewards and
+how many levels were gained; retrying a claim grants nothing and never repeats level-up feedback.
+Signing out does not delete the character; signing back in with the same Clerk identity restores it.
+
 ## Tests and limitations
 
 ```sh
@@ -51,6 +62,6 @@ DATABASE_URL='postgresql://...' pnpm --filter @workspace/project-frontier test:i
 DATABASE_URL='postgresql://...' pnpm --filter @workspace/project-frontier test
 ```
 
-PostgreSQL integration tests require a real PostgreSQL `DATABASE_URL` and fail explicitly if it is missing. They refuse to run with `NODE_ENV=production` or `FRONTIER_MIGRATION_ENV=production`. Each run creates a random isolated schema, sets it as the connection `search_path`, stores Drizzle migration history in that schema, and drops only that test schema. They cover concurrent Clerk identity provisioning, 30-second start timing, persistence across repository instances, idempotent/concurrent start, early claim rejection without side effects, owner authorization, concurrent and sequential duplicate claim, and exactly-once rewards. Unit tests cover pure command validation and time calculation.
+PostgreSQL integration tests require a real PostgreSQL `DATABASE_URL` and fail explicitly if it is missing. They refuse to run with `NODE_ENV=production` or `FRONTIER_MIGRATION_ENV=production`. Each run creates a random isolated schema, sets it as the connection `search_path`, stores Drizzle migration history in that schema, and drops only that test schema. They cover concurrent Clerk identity provisioning, 30-second start timing, persistence across repository instances, idempotent/concurrent start, early claim rejection without side effects, owner authorization, concurrent and sequential duplicate claim, exactly-once rewards, and level advancement with same-identity progression persistence. Unit tests cover pure command validation, time calculation, and level thresholds.
 
 The Playwright configuration and public landing/health smoke specs are provided with `pnpm --filter @workspace/project-frontier test:e2e`. They were not run as part of backend implementation. E2E does not authenticate or bypass Clerk. This slice intentionally defers all game content and mechanics beyond the single gather-wood activity, including simulation, cancellation, trading, combat, and admin tooling.

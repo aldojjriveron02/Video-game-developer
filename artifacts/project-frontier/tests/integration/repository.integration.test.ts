@@ -6,6 +6,7 @@ import { Pool } from "pg";
 import { PostgresGameRepository } from "../../src/database/repository";
 import { frontierSchema } from "../../src/database/schema";
 import type { FrontierDatabase } from "../../src/database/client";
+import { GameService } from "../../src/game/service";
 
 describe("PostgreSQL game repository", () => {
   let adminPool: Pool;
@@ -157,13 +158,50 @@ describe("PostgreSQL game repository", () => {
       player.id,
       firstStart.id,
     );
-    expect(persistedClaim).toEqual(claimResults[0]);
+    expect(persistedClaim.activity).toEqual(claimResults[0].activity);
+    expect(persistedClaim.ledger).toEqual(claimResults[0].ledger);
+    expect(claimResults.filter((result) => result.rewardGranted)).toHaveLength(1);
+    expect(persistedClaim.rewardGranted).toBe(false);
+    expect(persistedClaim.levelsGained).toBe(0);
 
     const dashboard = await new PostgresGameRepository(database).getDashboard(player.id);
     expect(dashboard.player.gold).toBe(firstStart.reward.gold);
     expect(dashboard.player.xp).toBe(firstStart.reward.xp);
     expect(dashboard.inventory).toEqual([{ itemId: "wood", quantity: 3 }]);
     expect(dashboard.ledger).toHaveLength(1);
+  });
+
+  it("advances levels once and preserves resources/progression after re-resolving the same identity", async () => {
+    const clerkId = `integration:${randomUUID()}`;
+    const player = await repository.resolveClerkIdentity(clerkId, "Progression Explorer");
+    // Boundary setup is confined to this test's disposable database schema.
+    await testPool.query("UPDATE players SET xp = 16 WHERE id = $1", [player.id]);
+    const activity = await repository.startActivity(player.id, {
+      definitionId: "gather-wood", requestId: randomUUID(),
+    });
+    await markActivityReady(activity.id);
+    const results = await Promise.all([
+      repository.claimActivity(player.id, activity.id),
+      new PostgresGameRepository(database).claimActivity(player.id, activity.id),
+    ]);
+    expect(results.filter((result) => result.rewardGranted)).toHaveLength(1);
+    expect(results.reduce((total, result) => total + result.levelsGained, 0)).toBe(1);
+    expect(results.every((result) => result.progression.level === 2)).toBe(true);
+    const retry = await repository.claimActivity(player.id, activity.id);
+    expect(retry.rewardGranted).toBe(false);
+    expect(retry.levelsGained).toBe(0);
+
+    const freshRepository = new PostgresGameRepository(database);
+    const signedBackIn = await freshRepository.resolveClerkIdentity(clerkId, "Progression Explorer");
+    expect(signedBackIn.id).toBe(player.id);
+    const dashboard = await new GameService(freshRepository).dashboardForPlayer(signedBackIn.id);
+    expect(dashboard.player).toMatchObject({ gold: 12, xp: 24 });
+    expect(dashboard.progression).toEqual({
+      level: 2, totalXp: 24, xpIntoLevel: 0, xpForNextLevel: 48, xpRemaining: 48,
+    });
+    expect(dashboard.inventory).toEqual([{ itemId: "wood", quantity: 3 }]);
+    expect(dashboard.ledger).toHaveLength(1);
+    expect(dashboard.activeActivity).toBeNull();
   });
 
   it("allows only one of two concurrent distinct starts", async () => {

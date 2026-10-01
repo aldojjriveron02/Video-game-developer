@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import type { FrontierDatabase } from "./client";
 import type { Reward } from "../game/contracts";
 import { GameError } from "../game/errors";
+import { progressionForXp } from "../game/progression";
 import { getActivityDefinition } from "../content/gathering";
 import type {
   ActivityRecord,
@@ -245,7 +246,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
     return this.database.transaction(async (transaction) => {
       const player = rowsFrom(
         await transaction.execute(
-          sql`SELECT id FROM players WHERE id = ${playerId}::uuid FOR UPDATE`,
+          sql`SELECT id, xp FROM players WHERE id = ${playerId}::uuid FOR UPDATE`,
         ),
       )[0];
       if (!player) throw new GameError("activity_not_found", "The activity was not found.");
@@ -273,7 +274,13 @@ export class PostgresGameRepository implements GameRepositoryContract {
           `),
         )[0];
         if (!savedLedger) throw new Error("Claimed activity is missing its reward ledger entry.");
-        return { activity, ledger: mapLedger(savedLedger) };
+        return {
+          activity,
+          ledger: mapLedger(savedLedger),
+          rewardGranted: false,
+          levelsGained: 0,
+          progression: progressionForXp(Number(player.xp)),
+        };
       }
 
       const nowRow = rowsFrom(
@@ -285,6 +292,8 @@ export class PostgresGameRepository implements GameRepositoryContract {
       }
 
       const reward = activity.reward;
+      const beforeProgression = progressionForXp(Number(player.xp));
+      const afterProgression = progressionForXp(Number(player.xp) + reward.xp);
       const claimedRow = rowsFrom(
         await transaction.execute(sql`
           UPDATE activities
@@ -321,6 +330,9 @@ export class PostgresGameRepository implements GameRepositoryContract {
       return {
         activity: mapActivity(claimedRow),
         ledger: mapLedger(ledgerRow),
+        rewardGranted: true,
+        levelsGained: afterProgression.level - beforeProgression.level,
+        progression: afterProgression,
       };
     });
   }
