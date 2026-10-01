@@ -1,0 +1,1 @@
+- [Preview hydration](preview-hydration.md) — Next.js dev can serve HTTP 200 while auth stays blank if its Preview HMR connection is rejected.
