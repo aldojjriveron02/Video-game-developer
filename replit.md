@@ -5,6 +5,7 @@ PF-001 is a minimal server-authoritative idle MMO foundation, not the full game.
 ## Run & Operate
 
 - Replit workflow: `artifacts/project-frontier: web`.
+- Run targets that existing managed workflow directly; Project Frontier owns Preview `/`. Keep unused API Server and Canvas templates stopped unless explicitly needed.
 - `pnpm --filter @workspace/project-frontier dev` — Next.js development server.
 - `pnpm --filter @workspace/project-frontier build` — production build including TypeScript checking.
 - `pnpm --filter @workspace/project-frontier typecheck` — standalone TypeScript check.
