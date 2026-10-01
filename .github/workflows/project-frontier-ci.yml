@@ -1,0 +1,39 @@
+name: Project Frontier CI
+
+on:
+  push:
+    branches:
+      - project-frontier
+  pull_request:
+    branches:
+      - project-frontier
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Project Frontier unit tests
+        run: pnpm --filter @workspace/project-frontier test:unit
+
+      - name: Run Project Frontier typecheck
+        run: pnpm --filter @workspace/project-frontier typecheck
