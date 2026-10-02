@@ -55,6 +55,15 @@ const definitions: readonly ItemDefinition[] = [
   { id: "scout-hood", name: "Scout Hood", kind: "equipment", slot: "head", rarity: "rare",
     combatBonuses: { tactics: 2, agility: 2 },
     description: "Recovered bandit field gear built for awareness and movement. Improves Tactics and Agility." },
+  { id: "bandit-saber", name: "Bandit Saber", kind: "equipment", slot: "hand", rarity: "rare",
+    combatBonuses: { strength: 2, dexterity: 2 },
+    description: "A balanced raider blade recovered from the Rust Trail. Improves Strength and Dexterity." },
+  { id: "quarry-helm", name: "Quarry Helm", kind: "equipment", slot: "head", rarity: "uncommon",
+    combatBonuses: { defense: 2, tactics: 1 },
+    description: "A reinforced work helm scavenged from the Old Quarry. Improves Defense and Tactics." },
+  { id: "warden-coat", name: "Warden Coat", kind: "equipment", slot: "body", rarity: "rare",
+    combatBonuses: { defense: 3, vitality: 3, tactics: 1 },
+    description: "Heavy frontier armor once worn by an outpost warden. Strongly improves survivability." },
 ];
 
 export const STARTER_EQUIPMENT = ["field-axe", "work-vest"] as const;
