@@ -961,3 +961,1519 @@ body::before {
   .activity-body.activity-start { grid-template-columns: 76px 1fr; }
   .activity-illustration { min-height: 116px; }
 }
+
+
+/* =========================================================
+   FRONTIER GAME SCREENS — illustrated mobile RPG components
+   ========================================================= */
+.game-screen {
+  padding-top: 1.15rem;
+  padding-bottom: 6.75rem;
+}
+.game-screen-stack {
+  display: grid;
+  gap: 1rem;
+}
+.screen-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+.screen-heading h1 {
+  margin: .18rem 0 0;
+  color: #fff4df;
+  font: 600 2rem/1.04 Georgia, "Times New Roman", serif;
+}
+.screen-heading p {
+  max-width: 43rem;
+  margin: .4rem 0 0;
+  color: #aeb9c8;
+  font-size: .9rem;
+}
+.screen-heading-metric {
+  min-width: 9.5rem;
+  padding: .75rem .9rem;
+  border: 1px solid rgba(214,160,74,.34);
+  border-radius: 10px;
+  background: rgba(214,160,74,.06);
+  text-align: right;
+}
+.screen-heading-metric span,
+.screen-heading-metric strong {
+  display: block;
+}
+.screen-heading-metric span {
+  color: #9faabd;
+  font: 500 .64rem "IBM Plex Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.screen-heading-metric strong {
+  margin-top: .15rem;
+  color: #f5c66f;
+  font: 600 1.45rem Georgia, serif;
+}
+.screen-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.screen-tab {
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 1px solid #354c66;
+  border-radius: 9px;
+  background: #0b1726;
+  color: #93a1b3;
+  font: 600 .82rem "IBM Plex Sans", sans-serif;
+}
+.screen-tab.active {
+  color: #ffd98a;
+  border-color: #b47d37;
+  background: linear-gradient(180deg, rgba(188,124,50,.22), rgba(91,52,25,.14));
+  box-shadow: inset 0 -2px 0 #dca04a;
+}
+
+.region-art {
+  position: relative;
+  min-height: 210px;
+  overflow: hidden;
+  background: #091522;
+}
+.region-art.compact { min-height: 148px; }
+.region-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+.region-art-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2,7,13,.08), rgba(3,9,16,.18) 42%, rgba(3,9,16,.88) 100%);
+}
+.region-art-label {
+  position: absolute;
+  left: .9rem;
+  bottom: .75rem;
+  color: #fff4df;
+  font: 600 1rem Georgia, serif;
+  text-shadow: 0 2px 8px rgba(0,0,0,.7);
+}
+
+.enemy-portrait {
+  position: relative;
+  min-width: 70px;
+  min-height: 64px;
+  overflow: hidden;
+  border: 1px solid #405876;
+  border-radius: 8px;
+  background: #0b1726;
+}
+.enemy-portrait-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(214,160,74,.18), transparent 48%),
+    linear-gradient(155deg, #1c354a, #0a1522 62%, #241c19);
+}
+.enemy-rust-trail .enemy-portrait-bg {
+  background: radial-gradient(circle at 50% 30%, rgba(185,91,47,.28), transparent 45%), linear-gradient(155deg, #4a2d26, #101927 65%);
+}
+.enemy-old-quarry .enemy-portrait-bg {
+  background: radial-gradient(circle at 50% 28%, rgba(179,118,56,.24), transparent 45%), linear-gradient(155deg, #3f4852, #0d1621 70%);
+}
+.enemy-ruined-outpost .enemy-portrait-bg {
+  background: radial-gradient(circle at 50% 28%, rgba(99,136,173,.28), transparent 45%), linear-gradient(155deg, #25364b, #08111d 68%);
+}
+.enemy-silhouette {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #e7b45d;
+  font: 700 2.4rem Georgia, serif;
+  text-shadow: 0 5px 16px rgba(0,0,0,.85);
+}
+.enemy-portrait-name {
+  position: absolute;
+  left: .4rem;
+  right: .4rem;
+  bottom: .28rem;
+  overflow: hidden;
+  color: #f1e7d7;
+  font: 600 .58rem "IBM Plex Sans", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 6px #000;
+}
+
+/* Combat */
+.combat-stage { overflow: hidden; }
+.combat-stage > .region-art {
+  min-height: 250px;
+  border-bottom: 1px solid #314964;
+}
+.combat-stage-overlay {
+  position: absolute;
+  top: 3.4rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  pointer-events: none;
+}
+.combat-player-card {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  max-width: 190px;
+  padding: .6rem .7rem;
+  border: 1px solid rgba(214,160,74,.48);
+  border-radius: 9px;
+  background: rgba(4,12,20,.82);
+  box-shadow: 0 12px 30px rgba(0,0,0,.3);
+}
+.combat-player-mark {
+  display: grid;
+  place-items: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 50%;
+  border: 1px solid #d6a04a;
+  color: #f0c879;
+  background: #101d2d;
+  font: 700 1.2rem Georgia, serif;
+}
+.combat-player-card strong,
+.combat-player-card span {
+  display: block;
+}
+.combat-player-card strong {
+  color: #fff2dc;
+  font: 600 .85rem Georgia, serif;
+}
+.combat-player-card span {
+  color: #9eabbc;
+  font-size: .64rem;
+}
+.versus-mark {
+  display: grid;
+  place-items: center;
+  width: 2.45rem;
+  height: 2.45rem;
+  border-radius: 50%;
+  color: #f6c46d;
+  background: rgba(5,12,20,.86);
+  border: 1px solid rgba(214,160,74,.48);
+  font: 700 .72rem "IBM Plex Mono", monospace;
+}
+.combat-enemy-focus {
+  justify-self: end;
+  width: 190px;
+}
+.combat-enemy-focus .enemy-portrait {
+  min-height: 118px;
+}
+.combat-enemy-focus .enemy-silhouette { font-size: 4.3rem; }
+.combat-enemy-focus .enemy-portrait-name { font-size: .76rem; bottom: .5rem; }
+.combat-stage-info { padding: 1rem; }
+.combat-stage-info h2,
+.battle-result h2,
+.training-card h2,
+.active-operation h2,
+.craft-active h2,
+.craft-detail h2,
+.blocking-activity h2,
+.active-quest-card h2,
+.skill-category-hero h2 {
+  margin: .15rem 0 .3rem;
+  color: #fff4df;
+  font: 600 1.55rem/1.1 Georgia, "Times New Roman", serif;
+}
+.combat-stage-info p,
+.battle-result p,
+.training-card p,
+.active-operation p,
+.craft-active p,
+.craft-detail p,
+.blocking-activity p,
+.skill-category-hero p {
+  color: #aeb9c8;
+}
+.enemy-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .5rem;
+  margin: .9rem 0;
+}
+.enemy-stat-grid span {
+  padding: .55rem .6rem;
+  border: 1px solid #30475f;
+  border-radius: 7px;
+  background: #091522;
+}
+.enemy-stat-grid small,
+.enemy-stat-grid strong {
+  display: block;
+}
+.enemy-stat-grid small {
+  color: #8494a8;
+  font-size: .6rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.enemy-stat-grid strong {
+  margin-top: .15rem;
+  color: #f0d5a4;
+  font: 600 .92rem "IBM Plex Mono", monospace;
+}
+.combat-reward-strip {
+  display: grid;
+  gap: .45rem;
+  margin: .75rem 0;
+}
+.combat-reward-strip > div {
+  display: flex;
+  gap: .55rem;
+  align-items: center;
+  padding: .55rem .65rem;
+  border: 1px solid #344b66;
+  border-radius: 8px;
+  color: #c7d1dd;
+  background: rgba(7,16,28,.66);
+  font-size: .76rem;
+}
+.combat-reward-strip svg { color: #e3ad55; flex: 0 0 auto; }
+.encounter-btn {
+  width: 100%;
+  border-color: #db6d47;
+  background: linear-gradient(180deg, #b94935, #7f261f);
+  color: #fff2e8;
+}
+.encounter-btn:hover:not(:disabled) { background: linear-gradient(180deg, #ce5c44, #922f27); }
+
+.enemy-list { display: grid; }
+.enemy-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 76px minmax(0,1fr) auto auto;
+  gap: .7rem;
+  align-items: center;
+  padding: .65rem .75rem;
+  border: 0;
+  border-top: 1px solid #25384d;
+  color: #e7edf4;
+  background: transparent;
+  text-align: left;
+}
+.enemy-row:first-child { border-top: 0; }
+.enemy-row:hover,
+.enemy-row.selected { background: rgba(46,83,122,.18); }
+.enemy-row.selected { box-shadow: inset 3px 0 #e1a64e; }
+.enemy-row-copy strong,
+.enemy-row-copy span { display: block; }
+.enemy-row-copy strong { font: 600 .9rem Georgia, serif; }
+.enemy-row-copy span { margin-top: .1rem; color: #8e9db1; font-size: .68rem; }
+.difficulty {
+  padding: .18rem .48rem;
+  border: 1px solid;
+  border-radius: 999px;
+  font: 600 .62rem "IBM Plex Mono", monospace;
+}
+.difficulty.easy { color: #6de0b8; border-color: #2c9c78; background: rgba(38,142,104,.12); }
+.difficulty.medium { color: #f0c05f; border-color: #aa7930; background: rgba(170,121,48,.12); }
+.difficulty.hard { color: #f08f85; border-color: #a64d49; background: rgba(166,77,73,.12); }
+.enemy-chevron { color: #8f9bad; font-size: 1.4rem; }
+
+.training-body { padding: 1rem; }
+.training-skill-pills {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: .45rem;
+}
+.training-pill {
+  min-height: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  border: 1px solid #324960;
+  border-radius: 8px;
+  color: #9eacbe;
+  background: #091522;
+  font-size: .65rem;
+}
+.training-pill svg { color: #d6a04a; }
+.training-pill.selected {
+  color: #f7d791;
+  border-color: #ba853b;
+  background: rgba(186,133,59,.12);
+}
+.training-detail {
+  display: grid;
+  gap: .65rem;
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid #2d4259;
+}
+.duration-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 190px;
+  gap: .7rem;
+  align-items: center;
+}
+.duration-control > span {
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  color: #9faabd;
+  font-size: .76rem;
+}
+.active-operation-body { padding: 1rem; }
+
+.battle-result { border-color: #4d7c69; }
+.battle-result.defeat { border-color: #7f4d50; }
+.battle-result-hero {
+  display: flex;
+  gap: .8rem;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #2f455d;
+}
+.battle-result-icon {
+  display: grid;
+  place-items: center;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  color: #e8c166;
+  background: rgba(214,160,74,.09);
+  border: 1px solid #9d743a;
+}
+.battle-health-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .9rem;
+  padding: 1rem;
+}
+.battle-health-grid span,
+.battle-health-grid strong { display: block; }
+.battle-health-grid span { color: #9aa8ba; font-size: .72rem; }
+.battle-health-grid strong { margin: .2rem 0 .4rem; color: #e7edf4; font-size: .82rem; }
+.enemy-health { background: linear-gradient(90deg, #8d312c, #df694c); box-shadow: 0 0 14px rgba(223,105,76,.28); }
+.battle-summary-row {
+  display: flex;
+  gap: .8rem;
+  flex-wrap: wrap;
+  padding: .75rem 1rem;
+  border-top: 1px solid #263a50;
+  color: #99a9bb;
+  font-size: .7rem;
+}
+.battle-log { border-top: 1px solid #263a50; }
+.battle-log summary {
+  padding: .8rem 1rem;
+  color: #d6ab62;
+  cursor: pointer;
+  font: 600 .74rem "IBM Plex Mono", monospace;
+}
+.battle-log-list { padding: 0 1rem 1rem; }
+.battle-log-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .45rem;
+  padding: .45rem 0;
+  border-top: 1px dashed #2a3d53;
+  color: #aeb8c6;
+  font-size: .67rem;
+}
+
+/* Equipment & Inventory */
+.equipment-stage-body {
+  display: grid;
+  grid-template-columns: 1fr minmax(210px, 1.25fr) 1fr;
+  gap: 1rem;
+  align-items: center;
+  min-height: 390px;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(71,112,156,.22), transparent 16rem),
+    linear-gradient(180deg, #0d1b2b, #08121f);
+}
+.equipment-slots-column {
+  display: grid;
+  gap: .65rem;
+}
+.equipment-slot-card {
+  display: flex;
+  gap: .6rem;
+  align-items: center;
+  min-height: 74px;
+  padding: .6rem;
+  border: 1px solid #334a63;
+  border-radius: 9px;
+  color: #bcc8d5;
+  background: #0b1827;
+  text-align: left;
+}
+.equipment-slot-card.filled {
+  border-color: #437aa5;
+  box-shadow: inset 0 0 0 1px rgba(63,151,214,.08);
+}
+.equipment-slot-card.locked-slot { opacity: .55; }
+.slot-icon {
+  display: grid;
+  place-items: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  flex: 0 0 auto;
+  border: 1px solid #43617f;
+  border-radius: 8px;
+  color: #e0ad5b;
+  background: #0a1421;
+}
+.slot-copy small,
+.slot-copy strong { display: block; }
+.slot-copy small { color: #8291a5; font-size: .6rem; text-transform: uppercase; }
+.slot-copy strong { margin-top: .08rem; color: #eef2f6; font: 600 .76rem Georgia, serif; }
+
+.operator-paperdoll {
+  position: relative;
+  min-height: 320px;
+  overflow: hidden;
+  border: 1px solid rgba(214,160,74,.28);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(214,160,74,.15), transparent 9rem),
+    linear-gradient(180deg, #16283b, #07111d 82%);
+}
+.operator-aura {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 11rem;
+  height: 15rem;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(60,123,170,.18), transparent 68%);
+}
+.operator-head {
+  position: absolute;
+  left: 50%;
+  top: 3.3rem;
+  width: 3.5rem;
+  height: 3.7rem;
+  transform: translateX(-50%);
+  border-radius: 50% 50% 45% 45%;
+  background: linear-gradient(145deg, #b78a68, #5c3b2b);
+  box-shadow: 0 8px 16px rgba(0,0,0,.35);
+}
+.operator-body-shape {
+  position: absolute;
+  left: 50%;
+  top: 6.25rem;
+  width: 7.1rem;
+  height: 9.7rem;
+  transform: translateX(-50%);
+  clip-path: polygon(20% 0,80% 0,100% 100%,0 100%);
+  background: linear-gradient(160deg, #6b4a33, #202b35 48%, #111923 100%);
+  border: 1px solid #8d6a45;
+}
+.operator-arm {
+  position: absolute;
+  top: 7rem;
+  width: 2rem;
+  height: 8.6rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #5f4535, #1c2732);
+}
+.operator-arm.left { left: calc(50% - 5rem); transform: rotate(8deg); }
+.operator-arm.right { right: calc(50% - 5rem); transform: rotate(-8deg); }
+.operator-legs {
+  position: absolute;
+  left: 50%;
+  top: 15rem;
+  width: 5.8rem;
+  height: 7rem;
+  transform: translateX(-50%);
+  background:
+    linear-gradient(90deg, #182431 0 45%, transparent 45% 55%, #182431 55% 100%);
+}
+.operator-nameplate {
+  position: absolute;
+  left: .75rem;
+  right: .75rem;
+  bottom: .7rem;
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  border: 1px solid #354d65;
+  border-radius: 8px;
+  background: rgba(4,10,17,.8);
+}
+.operator-nameplate strong { color: #f4e7d2; font: 600 .8rem Georgia, serif; }
+.operator-nameplate span { color: #c59a57; font-size: .68rem; }
+
+.gear-inspect {
+  display: grid;
+  grid-template-columns: 96px minmax(0,1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+}
+.gear-inspect-icon,
+.gear-tile-icon,
+.resource-icon {
+  display: grid;
+  place-items: center;
+  border: 1px solid #415a74;
+  border-radius: 10px;
+  color: #dca954;
+  background: radial-gradient(circle at 50% 30%, rgba(67,111,157,.2), #091522 72%);
+}
+.gear-inspect-icon { width: 88px; height: 88px; }
+.gear-inspect-copy h2 {
+  margin: .12rem 0 .25rem;
+  color: #fff4df;
+  font: 600 1.3rem Georgia, serif;
+}
+.gear-inspect-copy p {
+  margin: 0;
+  color: #aeb9c7;
+  font-size: .8rem;
+}
+.gear-bonuses {
+  margin-top: .5rem;
+  color: #6fdde1;
+  font: 500 .72rem "IBM Plex Mono", monospace;
+}
+.rarity-uncommon { border-color: #367d9a !important; }
+.rarity-rare { border-color: #7957aa !important; box-shadow: 0 0 24px rgba(114,75,173,.12); }
+.rarity-rare .gear-inspect-icon,
+.rarity-rare .gear-tile-icon { border-color: #7b5db0; color: #c497ff; }
+
+.gear-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: .65rem;
+  padding: .8rem;
+}
+.gear-tile {
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  align-items: center;
+  justify-content: center;
+  padding: .55rem;
+  border: 1px solid #31475e;
+  border-radius: 9px;
+  color: #dce4ec;
+  background: #091522;
+}
+.gear-tile.selected { box-shadow: inset 0 0 0 2px rgba(218,164,74,.45); }
+.gear-tile-icon { width: 56px; height: 56px; }
+.gear-tile strong { font: 600 .72rem Georgia, serif; text-align: center; }
+.gear-tile span { color: #8292a6; font-size: .6rem; text-transform: capitalize; }
+
+.resource-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .65rem;
+  padding: .8rem;
+}
+.resource-tile {
+  display: grid;
+  grid-template-columns: 52px minmax(0,1fr) auto;
+  gap: .65rem;
+  align-items: center;
+  min-height: 86px;
+  padding: .6rem;
+  border: 1px solid #30455d;
+  border-radius: 9px;
+  background: #091522;
+}
+.resource-icon { width: 50px; height: 50px; }
+.resource-tile-copy strong,
+.resource-tile-copy span { display: block; }
+.resource-tile-copy strong { color: #edf1f5; font: 600 .78rem Georgia, serif; }
+.resource-tile-copy span { margin-top: .12rem; color: #7f8da0; font-size: .6rem; }
+.resource-tile b { color: #f0bf68; font: 600 .9rem "IBM Plex Mono", monospace; }
+.inventory-tip { padding-bottom: 1rem; }
+.inventory-tip > p { padding: .9rem 1rem 0; color: #9aa8ba; }
+.inventory-tip > .btn { margin: 0 1rem; }
+.padded-empty { padding: 1rem; }
+
+/* World */
+.world-overview {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+}
+.world-overview-copy {
+  display: flex;
+  gap: .8rem;
+  align-items: center;
+}
+.world-overview-copy svg { color: #d7a24e; }
+.world-overview-copy strong,
+.world-overview-copy span,
+.world-next span,
+.world-next strong,
+.world-next small { display: block; }
+.world-overview-copy strong {
+  color: #fff0d2;
+  font: 600 1.8rem Georgia, serif;
+}
+.world-overview-copy span { color: #8d9cae; font-size: .67rem; }
+.world-next { text-align: right; }
+.world-next span { color: #8d9cad; font-size: .62rem; text-transform: uppercase; }
+.world-next strong { margin-top: .08rem; color: #e6c07d; font: 600 .88rem Georgia, serif; }
+.world-next small { margin-top: .08rem; color: #7f8da0; font-size: .62rem; }
+.frontier-map-header {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid #2f455d;
+  color: #d6aa62;
+  font: 600 .76rem "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.frontier-map-header small {
+  margin-left: auto;
+  color: #8291a3;
+  font-size: .62rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.frontier-route {
+  display: grid;
+  gap: 1.15rem;
+  padding: 1rem;
+}
+.region-stop {
+  position: relative;
+  overflow: visible;
+  border: 1px solid #30465f;
+  border-radius: 11px;
+  background: #0a1624;
+}
+.region-stop.locked { opacity: .62; filter: saturate(.65); }
+.region-stop > .region-art {
+  min-height: 190px;
+  border-radius: 10px 10px 0 0;
+}
+.route-connector {
+  position: absolute;
+  left: 50%;
+  top: -1.2rem;
+  z-index: 2;
+  width: 2px;
+  height: 1.2rem;
+  background: #40536a;
+}
+.route-connector.open {
+  background: #d39c49;
+  box-shadow: 0 0 10px rgba(211,156,73,.35);
+}
+.region-stop-content { padding: .85rem; }
+.region-stop-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: .7rem;
+  align-items: center;
+}
+.region-number {
+  color: #e0ad5b;
+  font: 600 .7rem "IBM Plex Mono", monospace;
+}
+.region-status {
+  display: inline-flex;
+  gap: .3rem;
+  align-items: center;
+  color: #a2aebc;
+  font-size: .62rem;
+}
+.region-status.open { color: #6cd8d9; }
+.region-stop h2 {
+  margin: .35rem 0 .2rem;
+  color: #fff3df;
+  font: 600 1.3rem Georgia, serif;
+}
+.region-stop p {
+  margin: 0 0 .65rem;
+  color: #9ba9bb;
+  font-size: .78rem;
+}
+.region-enemy-list {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+.region-enemy-chip {
+  display: inline-flex;
+  gap: .38rem;
+  align-items: center;
+  padding: .35rem .45rem;
+  border: 1px solid #31475e;
+  border-radius: 7px;
+  color: #bac4d0;
+  background: rgba(8,18,30,.7);
+  font-size: .65rem;
+}
+.region-enemy-chip svg { color: #d49c48; }
+.region-enemy-chip b { color: #8594a7; font-weight: 500; }
+.region-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: .7rem;
+  align-items: center;
+  margin-top: .75rem;
+  padding-top: .7rem;
+  border-top: 1px solid #263a4f;
+}
+.region-footer > span { color: #8c9aad; font-size: .68rem; }
+.region-footer strong { color: #e0b162; }
+
+/* Quests */
+.active-quest-card { overflow: hidden; }
+.active-quest-card > .region-art { min-height: 150px; }
+.active-quest-content { border-top: 1px solid #3b4f66; }
+.active-quest-inner { padding: 1rem; }
+.campaign-card {
+  overflow: hidden;
+  border: 1px solid #314760;
+  border-radius: 11px;
+  background: #0a1624;
+  box-shadow: 0 12px 28px rgba(0,0,0,.15);
+}
+.campaign-card.completed { border-color: #397c79; }
+.campaign-card.active { border-color: #a87838; box-shadow: 0 0 28px rgba(188,130,54,.1); }
+.campaign-card.locked { opacity: .58; }
+.campaign-card > .region-art { min-height: 150px; }
+.campaign-card-content { padding: .9rem; }
+.campaign-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: .7rem;
+  align-items: center;
+}
+.chapter-number {
+  color: #d6a657;
+  font: 600 .66rem "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+}
+.campaign-state {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  color: #b7c2cf;
+  font-size: .62rem;
+}
+.campaign-state.complete { color: #63d0c9; }
+.campaign-state.active { color: #f0c36b; }
+.campaign-state.locked { color: #7f8c9b; }
+.campaign-card h2 {
+  margin: .42rem 0 .2rem;
+  color: #fff2dc;
+  font: 600 1.3rem Georgia, serif;
+}
+.campaign-card p {
+  margin: 0 0 .7rem;
+  color: #9ba9ba;
+  font-size: .78rem;
+}
+.quest-objective-list { display: grid; gap: .35rem; }
+.quest-objective-row {
+  display: grid;
+  grid-template-columns: 18px 20px 1fr;
+  gap: .45rem;
+  align-items: center;
+  color: #c4ccd6;
+  font-size: .72rem;
+}
+.quest-objective-row svg { color: #c79a51; }
+.quest-reward-box {
+  display: grid;
+  gap: .15rem;
+  margin-top: .75rem;
+  padding: .65rem .7rem;
+  border: 1px solid #354b61;
+  border-radius: 8px;
+  background: rgba(7,16,27,.66);
+}
+.quest-reward-box span {
+  color: #d0a65e;
+  font-size: .61rem;
+  text-transform: uppercase;
+}
+.quest-reward-box strong {
+  color: #c6cfdb;
+  font: 500 .68rem "IBM Plex Mono", monospace;
+}
+.quest-start-btn { width: 100%; margin-top: .7rem; }
+.blocking-activity-body { padding: 1rem; }
+
+/* Crafting */
+.craft-active-body {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+.craft-scene,
+.craft-detail-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px solid #4b4b45;
+  border-radius: 10px;
+  color: #f0b75b;
+  background:
+    radial-gradient(circle at 50% 68%, rgba(239,119,39,.32), transparent 6rem),
+    linear-gradient(160deg, #3c261d, #171b20 50%, #09121d);
+}
+.forge-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  width: 8rem;
+  height: 4rem;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(232,102,30,.35);
+  filter: blur(18px);
+}
+.craft-scene svg,
+.craft-detail-art > svg { position: relative; z-index: 2; }
+.craft-active-copy { align-self: center; }
+.recipe-tabs {
+  display: grid;
+  grid-template-columns: repeat(6,1fr);
+  gap: .45rem;
+  padding: .75rem;
+}
+.recipe-tab {
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  align-items: center;
+  justify-content: center;
+  padding: .5rem;
+  border: 1px solid #31465d;
+  border-radius: 8px;
+  color: #aab7c6;
+  background: #091522;
+  font-size: .64rem;
+}
+.recipe-tab.selected {
+  color: #f5cf83;
+  border-color: #aa7936;
+  background: rgba(170,121,54,.12);
+}
+.recipe-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 2.7rem;
+  height: 2.7rem;
+  border: 1px solid #3a526c;
+  border-radius: 8px;
+  color: #daa854;
+  background: #07111e;
+}
+.craft-detail {
+  display: grid;
+  grid-template-columns: minmax(220px, .8fr) minmax(0, 1.5fr);
+}
+.craft-detail-art {
+  min-height: 100%;
+  border: 0;
+  border-right: 1px solid #334a62;
+  border-radius: 0;
+}
+.craft-detail-art-label {
+  position: absolute;
+  left: .7rem;
+  right: .7rem;
+  bottom: .7rem;
+  padding: .45rem .55rem;
+  border: 1px solid #574632;
+  border-radius: 7px;
+  color: #f0c77f;
+  background: rgba(8,11,14,.68);
+  text-align: center;
+  font: 600 .72rem Georgia, serif;
+}
+.craft-detail-copy { padding: 1rem; }
+.craft-skill-row {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin: .65rem 0;
+  color: #b8c3cf;
+  font-size: .76rem;
+}
+.craft-skill-row svg { color: #d3a14e; }
+.material-requirements { display: grid; gap: .4rem; }
+.subheading {
+  color: #cba65f;
+  font: 600 .65rem "IBM Plex Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.material-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0,1fr) auto;
+  gap: .5rem;
+  align-items: center;
+  padding: .45rem .5rem;
+  border: 1px solid #30465e;
+  border-radius: 7px;
+  background: #091522;
+}
+.material-row svg { color: #d5a452; }
+.material-row span { color: #b6c0cc; font-size: .72rem; }
+.material-row strong { color: #72d9d7; font: 600 .7rem "IBM Plex Mono", monospace; }
+.material-row.missing strong { color: #ef8a83; }
+.craft-output {
+  display: grid;
+  grid-template-columns: 24px auto minmax(0,1fr);
+  gap: .45rem;
+  align-items: center;
+  margin-top: .7rem;
+  padding: .6rem;
+  border: 1px solid #3a5169;
+  border-radius: 8px;
+  background: rgba(7,16,28,.68);
+}
+.craft-output svg { color: #e1ae54; }
+.craft-output span { color: #909eb0; font-size: .68rem; }
+.craft-output strong { color: #d9e0e8; font: 500 .69rem "IBM Plex Mono", monospace; }
+.craft-start-button { width: 100%; margin-top: .75rem; }
+.material-store-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .45rem;
+  padding: .75rem;
+}
+.material-store-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: .45rem;
+  align-items: center;
+  padding: .5rem;
+  border: 1px solid #2e435a;
+  border-radius: 7px;
+  background: #091522;
+}
+.material-store-item svg { color: #cda051; }
+.material-store-item span { color: #aab5c2; font-size: .68rem; }
+.material-store-item strong { color: #e8bd6d; font: 600 .72rem "IBM Plex Mono", monospace; }
+
+/* Skills */
+.skill-category-tabs {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.skill-category-tab {
+  min-height: 3rem;
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #344a62;
+  border-radius: 9px;
+  color: #91a0b3;
+  background: #0a1624;
+  font-size: .74rem;
+}
+.skill-category-tab.active {
+  color: #f2cc80;
+  border-color: #aa7a39;
+  background: rgba(170,122,57,.12);
+}
+.skill-category-hero {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+}
+.skill-category-icon {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  border: 1px solid #48627d;
+  border-radius: 12px;
+  color: #dda953;
+  background: radial-gradient(circle at 50% 30%, rgba(68,111,157,.2), #091522 75%);
+}
+.skill-category-hero p { margin: .2rem 0 0; font-size: .77rem; }
+.skill-category-total { text-align: right; }
+.skill-category-total small,
+.skill-category-total strong { display: block; }
+.skill-category-total small { color: #8392a5; font-size: .6rem; text-transform: uppercase; }
+.skill-category-total strong { color: #f0c36e; font: 600 1.5rem Georgia, serif; }
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .7rem;
+}
+.skill-tile {
+  min-height: 210px;
+  padding: .85rem;
+  border: 1px solid #30465e;
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 25% 0%, rgba(52,96,140,.16), transparent 8rem),
+    #0a1624;
+}
+.skill-tile-top {
+  display: flex;
+  justify-content: space-between;
+  gap: .7rem;
+  align-items: center;
+}
+.skill-glyph {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid #3d5873;
+  border-radius: 9px;
+  color: #d9a653;
+  background: #08131f;
+}
+.skill-level { text-align: right; }
+.skill-level small,
+.skill-level strong { display: block; }
+.skill-level small { color: #7f8ea1; font-size: .58rem; text-transform: uppercase; }
+.skill-level strong { color: #f0c36d; font: 600 1.15rem Georgia, serif; }
+.skill-tile h3 {
+  margin: .65rem 0 .2rem;
+  color: #eff3f7;
+  font: 600 1rem Georgia, serif;
+}
+.skill-tile p {
+  min-height: 2.4rem;
+  margin: 0 0 .65rem;
+  color: #8f9db0;
+  font-size: .7rem;
+}
+.skill-xp {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-top: .45rem;
+  color: #8392a4;
+  font-size: .58rem;
+}
+.skill-xp strong { color: #b0bbc8; font-weight: 500; }
+
+@media (max-width: 820px) {
+  .training-skill-pills,
+  .recipe-tabs { grid-template-columns: repeat(3,1fr); }
+  .gear-grid { grid-template-columns: repeat(3,1fr); }
+  .resource-grid,
+  .material-store-grid,
+  .skill-grid { grid-template-columns: repeat(2,1fr); }
+}
+
+@media (max-width: 640px) {
+  .game-screen {
+    padding-top: .8rem;
+    padding-bottom: 1.2rem;
+  }
+  .screen-heading {
+    align-items: flex-start;
+    margin-bottom: .75rem;
+  }
+  .screen-heading h1 { font-size: 1.55rem; }
+  .screen-heading p { font-size: .76rem; }
+  .screen-heading-metric {
+    min-width: 6.8rem;
+    padding: .55rem .6rem;
+  }
+  .screen-heading-metric span { font-size: .52rem; }
+  .screen-heading-metric strong { font-size: 1.05rem; }
+
+  .combat-stage > .region-art { min-height: 215px; }
+  .combat-stage-overlay {
+    top: 3rem;
+    left: .65rem;
+    right: .65rem;
+    gap: .45rem;
+  }
+  .combat-player-card {
+    max-width: 120px;
+    padding: .45rem;
+  }
+  .combat-player-mark { width: 2.1rem; height: 2.1rem; font-size: .9rem; }
+  .combat-player-card strong { font-size: .68rem; }
+  .combat-player-card span { font-size: .52rem; }
+  .versus-mark { width: 2rem; height: 2rem; font-size: .58rem; }
+  .combat-enemy-focus { width: 118px; }
+  .combat-enemy-focus .enemy-portrait { min-height: 90px; }
+  .combat-enemy-focus .enemy-silhouette { font-size: 3.2rem; }
+  .combat-stage-info { padding: .75rem; }
+  .combat-stage-info h2,
+  .battle-result h2,
+  .training-card h2,
+  .active-operation h2,
+  .craft-active h2,
+  .craft-detail h2,
+  .blocking-activity h2,
+  .active-quest-card h2,
+  .skill-category-hero h2 { font-size: 1.2rem; }
+  .enemy-stat-grid { grid-template-columns: repeat(2,1fr); gap: .35rem; }
+  .enemy-row { grid-template-columns: 58px minmax(0,1fr) auto; padding: .55rem; }
+  .enemy-row .enemy-portrait { min-width: 56px; min-height: 54px; }
+  .enemy-chevron { display: none; }
+  .difficulty { font-size: .52rem; }
+  .training-skill-pills { grid-template-columns: repeat(3,1fr); }
+  .training-pill { min-height: 64px; }
+  .duration-control { grid-template-columns: 1fr; }
+  .battle-health-grid { grid-template-columns: 1fr; }
+  .battle-log-row { grid-template-columns: repeat(2,1fr); }
+
+  .equipment-stage-body {
+    grid-template-columns: 90px 1fr 90px;
+    gap: .5rem;
+    min-height: 330px;
+    padding: .65rem;
+  }
+  .equipment-slot-card {
+    min-height: 72px;
+    flex-direction: column;
+    justify-content: center;
+    padding: .4rem;
+    text-align: center;
+  }
+  .slot-icon { width: 2.35rem; height: 2.35rem; }
+  .slot-copy small { font-size: .48rem; }
+  .slot-copy strong { font-size: .58rem; }
+  .operator-paperdoll { min-height: 290px; }
+  .operator-nameplate { flex-direction: column; text-align: center; }
+  .gear-inspect {
+    grid-template-columns: 68px 1fr;
+    gap: .7rem;
+  }
+  .gear-inspect-icon { width: 64px; height: 64px; }
+  .gear-inspect-actions { grid-column: 1 / -1; }
+  .gear-inspect-actions .btn { width: 100%; }
+  .gear-grid { grid-template-columns: repeat(2,1fr); }
+  .resource-grid { grid-template-columns: 1fr; }
+  .resource-tile { grid-template-columns: 46px 1fr auto; }
+  .resource-icon { width: 44px; height: 44px; }
+
+  .world-overview { grid-template-columns: 1fr; }
+  .world-next { text-align: left; }
+  .frontier-map-header small { display: none; }
+  .frontier-route { padding: .7rem; }
+  .region-stop > .region-art { min-height: 155px; }
+  .region-footer { align-items: stretch; flex-direction: column; }
+  .region-footer .btn { width: 100%; }
+
+  .campaign-card > .region-art,
+  .active-quest-card > .region-art { min-height: 125px; }
+
+  .craft-active-body {
+    grid-template-columns: 90px 1fr;
+    gap: .7rem;
+    padding: .75rem;
+  }
+  .craft-scene { min-height: 150px; }
+  .recipe-tabs { grid-template-columns: repeat(3,1fr); }
+  .recipe-tab { min-height: 76px; }
+  .craft-detail { grid-template-columns: 1fr; }
+  .craft-detail-art {
+    min-height: 160px;
+    border-right: 0;
+    border-bottom: 1px solid #334a62;
+  }
+  .material-store-grid { grid-template-columns: 1fr 1fr; }
+
+  .skill-category-tabs { gap: .35rem; }
+  .skill-category-tab { font-size: .62rem; }
+  .skill-category-hero { grid-template-columns: auto 1fr; }
+  .skill-category-total {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    text-align: left;
+    padding-top: .6rem;
+    border-top: 1px solid #2d4258;
+  }
+  .skill-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .skill-tile { min-height: 190px; padding: .7rem; }
+  .skill-tile p { font-size: .64rem; }
+}
+
+@media (max-width: 390px) {
+  .screen-heading { gap: .6rem; }
+  .screen-heading-metric { min-width: 5.8rem; }
+  .gear-grid,
+  .skill-grid { grid-template-columns: 1fr 1fr; }
+  .equipment-stage-body { grid-template-columns: 76px 1fr 76px; }
+  .material-store-grid { grid-template-columns: 1fr; }
+}
+
+
+/* Canonical operator artwork */
+.operator-portrait {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0b1725;
+}
+.operator-portrait svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.operator-portrait-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 62%, rgba(3,8,14,.24)),
+    linear-gradient(180deg, transparent 58%, rgba(3,8,14,.82) 100%);
+}
+.operator-portrait-name {
+  position: absolute;
+  left: .85rem;
+  bottom: .7rem;
+  color: #f7e7c8;
+  font: 600 .8rem Georgia, serif;
+  letter-spacing: .02em;
+  text-shadow: 0 2px 9px rgba(0,0,0,.8);
+}
+.character-art:has(.operator-portrait)::before,
+.character-art:has(.operator-portrait)::after {
+  display: none;
+}
+.character-art:has(.operator-portrait) {
+  background: #0a1624;
+}
+
+@media (max-width: 640px) {
+  .operator-portrait-name { font-size: .62rem; left: .55rem; bottom: .45rem; }
+}
+
+
+/* Gathering */
+.gather-active-body {
+  display: grid;
+  grid-template-columns: 180px minmax(0,1fr);
+  gap: 1rem;
+  padding: 1rem;
+}
+.gather-scene,
+.gather-hero-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px solid #38536d;
+  border-radius: 10px;
+  color: #d8ad5d;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(67,130,142,.24), transparent 7rem),
+    linear-gradient(155deg, #183548, #0d1f2d 55%, #131b1f);
+}
+.gather-scene::before,
+.gather-hero-art::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 50%;
+  background:
+    linear-gradient(135deg, transparent 40%, rgba(8,18,26,.8) 41% 52%, transparent 53%) 0 0/120px 80px repeat-x,
+    linear-gradient(180deg, transparent, rgba(3,9,15,.78));
+}
+.gather-scene svg,
+.gather-hero-art svg {
+  position: relative;
+  z-index: 2;
+}
+.gather-scene-name,
+.gather-hero-art-label {
+  position: absolute;
+  z-index: 3;
+  left: .65rem;
+  right: .65rem;
+  bottom: .6rem;
+  padding: .42rem .55rem;
+  border: 1px solid #4a5f70;
+  border-radius: 7px;
+  color: #f0d39b;
+  background: rgba(4,11,18,.72);
+  text-align: center;
+  font: 600 .72rem Georgia, serif;
+}
+.gather-active-copy h2,
+.gather-detail h2 {
+  margin: .15rem 0 .3rem;
+  color: #fff4df;
+  font: 600 1.5rem/1.1 Georgia, serif;
+}
+.gather-active-copy p,
+.gather-detail p {
+  color: #aab6c4;
+}
+.gather-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0,1fr);
+}
+.gather-discipline-list {
+  display: grid;
+  align-content: start;
+  gap: .35rem;
+  padding: .7rem;
+  border-right: 1px solid #30465d;
+  background: #08131f;
+}
+.gather-discipline {
+  min-height: 3rem;
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  padding: .5rem .6rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #94a3b5;
+  background: transparent;
+  text-align: left;
+  font-size: .7rem;
+}
+.gather-discipline svg { color: #cda253; }
+.gather-discipline:hover,
+.gather-discipline.selected {
+  color: #f2d08b;
+  border-color: #8b6533;
+  background: rgba(139,101,51,.12);
+}
+.gather-detail {
+  display: grid;
+  grid-template-columns: minmax(210px,.8fr) minmax(0,1.4fr);
+  min-width: 0;
+}
+.gather-hero-art {
+  min-height: 100%;
+  border: 0;
+  border-radius: 0;
+  border-right: 1px solid #30465d;
+}
+.gather-detail-copy {
+  padding: 1rem;
+}
+.gather-skill-row {
+  display: flex;
+  gap: .45rem;
+  align-items: center;
+  margin: .65rem 0;
+  color: #aeb8c5;
+  font-size: .75rem;
+}
+.gather-skill-row svg { color: #d6a652; }
+.gather-reward-preview {
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr);
+  gap: .55rem;
+  align-items: center;
+  padding: .6rem;
+  border: 1px solid #334b63;
+  border-radius: 8px;
+  background: #091522;
+}
+.gather-reward-preview svg { color: #d8a654; }
+.gather-reward-preview small,
+.gather-reward-preview strong { display: block; }
+.gather-reward-preview small {
+  color: #8493a6;
+  font-size: .58rem;
+  text-transform: uppercase;
+}
+.gather-reward-preview strong {
+  margin-top: .1rem;
+  color: #c8d2de;
+  font: 500 .68rem "IBM Plex Mono", monospace;
+}
+.duration-buttons {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: .4rem;
+  margin-top: .75rem;
+}
+.duration-button {
+  min-height: 2.55rem;
+  border: 1px solid #344b62;
+  border-radius: 7px;
+  color: #9baabb;
+  background: #08131f;
+  font: 500 .67rem "IBM Plex Mono", monospace;
+}
+.duration-button.selected {
+  color: #161009;
+  border-color: #d2a04d;
+  background: linear-gradient(180deg, #edc371, #c48536);
+}
+.gather-start-btn {
+  width: 100%;
+  margin-top: .75rem;
+}
+
+@media (max-width: 640px) {
+  .gather-active-body {
+    grid-template-columns: 90px 1fr;
+    gap: .7rem;
+    padding: .75rem;
+  }
+  .gather-scene { min-height: 150px; }
+  .gather-layout { grid-template-columns: 1fr; }
+  .gather-discipline-list {
+    grid-template-columns: repeat(3,1fr);
+    gap: .35rem;
+    border-right: 0;
+    border-bottom: 1px solid #30465d;
+  }
+  .gather-discipline {
+    min-height: 64px;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    padding: .35rem;
+    font-size: .58rem;
+  }
+  .gather-detail { grid-template-columns: 1fr; }
+  .gather-hero-art {
+    min-height: 160px;
+    border-right: 0;
+    border-bottom: 1px solid #30465d;
+  }
+  .duration-buttons { grid-template-columns: repeat(2,1fr); }
+}
