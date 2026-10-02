@@ -9,6 +9,7 @@ export type EnemyDefinition = {
   attack: number;
   defense: number;
   reward: ActivityDefinition["reward"];
+  equipmentDrop?: { itemId: string; chance: number };
 };
 
 const enemies: readonly EnemyDefinition[] = [
@@ -21,6 +22,7 @@ const enemies: readonly EnemyDefinition[] = [
     attack: 6,
     defense: 2,
     reward: { gold: 18, xp: 14, itemId: "hide", quantity: 2 },
+    equipmentDrop: { itemId: "wolf-fang-knife", chance: 0.28 },
   },
   {
     id: "ashback-boar",
@@ -31,6 +33,7 @@ const enemies: readonly EnemyDefinition[] = [
     attack: 9,
     defense: 5,
     reward: { gold: 28, xp: 22, itemId: "hide", quantity: 3 },
+    equipmentDrop: { itemId: "boar-hide-coat", chance: 0.24 },
   },
   {
     id: "bandit-scout",
@@ -41,6 +44,7 @@ const enemies: readonly EnemyDefinition[] = [
     attack: 12,
     defense: 7,
     reward: { gold: 42, xp: 32, itemId: "iron-ore", quantity: 3 },
+    equipmentDrop: { itemId: "scout-hood", chance: 0.18 },
   },
 ] as const;
 
