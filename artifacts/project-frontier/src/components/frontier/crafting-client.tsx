@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { UserButton } from "@clerk/nextjs";
+import { Clock3, Hammer, Sparkles, TimerReset } from "lucide-react";
 import type {
   ActivityResponse,
   ClaimResponse,
@@ -9,8 +9,8 @@ import type {
   ResourceCost,
   Reward,
 } from "@/game/contracts";
-import { Brand } from "./brand";
 import { PlayerNav } from "./player-nav";
+import { GameHeader, ItemGlyph, ScreenHeading, SkillGlyph } from "./frontier-ui";
 
 type ApiError = { error?: string; code?: string };
 
@@ -33,11 +33,10 @@ function itemName(id: string) {
 }
 
 function rewardText(reward: Reward) {
-  const skill = reward.skillId && reward.skillXp
-    ? ` · +${reward.skillXp.toLocaleString()} ${itemName(reward.skillId)} XP`
-    : "";
-  const gold = reward.gold > 0 ? ` · +${reward.gold.toLocaleString()} gold` : "";
-  return `+${reward.quantity.toLocaleString()} ${itemName(reward.itemId)} · +${reward.xp.toLocaleString()} character XP${skill}${gold}`;
+  const parts = [`${reward.quantity.toLocaleString()} ${itemName(reward.itemId)}`, `${reward.xp.toLocaleString()} XP`];
+  if (reward.skillId && reward.skillXp) parts.push(`${reward.skillXp.toLocaleString()} ${itemName(reward.skillId)} XP`);
+  if (reward.gold > 0) parts.push(`${reward.gold.toLocaleString()} gold`);
+  return parts.join(" · ");
 }
 
 function costText(inputs: ResourceCost[]) {
@@ -49,8 +48,9 @@ function fmtTime(milliseconds: number) {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const remainder = seconds % 60;
-  if (hours > 0) return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
-  return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
 
 export function CraftingClient({ userId }: { userId: string }) {
@@ -72,9 +72,7 @@ export function CraftingClient({ userId }: { userId: string }) {
       offset.current = Date.parse(next.serverTime) - Date.now();
       setData(next);
       setSelectedRecipeId((current) =>
-        next.recipes.some((recipe) => recipe.id === current)
-          ? current
-          : (next.recipes[0]?.id ?? ""),
+        next.recipes.some((recipe) => recipe.id === current) ? current : (next.recipes[0]?.id ?? ""),
       );
       setError(null);
       if (next.activeActivity) requestId.current = null;
@@ -103,22 +101,19 @@ export function CraftingClient({ userId }: { userId: string }) {
   }, [load, userId]);
 
   const recipe = data?.recipes.find((entry) => entry.id === selectedRecipeId) ?? data?.recipes[0] ?? null;
-  const duration = recipe?.durationOptions.find((entry) => entry.id === selectedDurationId)
-    ?? recipe?.durationOptions[0]
-    ?? null;
+  const duration = recipe?.durationOptions.find((entry) => entry.id === selectedDurationId) ?? recipe?.durationOptions[0] ?? null;
   const inventory = useMemo(
     () => new Map((data?.inventory ?? []).map((item) => [item.itemId, item.quantity])),
     [data],
   );
-  const canAfford = !!duration && duration.inputs.every(
-    (input) => (inventory.get(input.itemId) ?? 0) >= input.quantity,
-  );
+  const canAfford = !!duration && duration.inputs.every((input) => (inventory.get(input.itemId) ?? 0) >= input.quantity);
 
   const active = data?.activeActivity ?? null;
   const serverNow = now + offset.current;
   const remaining = active ? Date.parse(active.finishesAt) - serverNow : 0;
   const total = active ? Date.parse(active.finishesAt) - Date.parse(active.startedAt) : 1;
   const ready = !!active && remaining <= 0;
+  const progress = active ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0;
 
   async function start() {
     if (!recipe || !duration) return;
@@ -130,11 +125,7 @@ export function CraftingClient({ userId }: { userId: string }) {
       await api<ActivityResponse>("/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          definitionId: recipe.id,
-          durationId: duration.id,
-          requestId: requestId.current,
-        }),
+        body: JSON.stringify({ definitionId: recipe.id, durationId: duration.id, requestId: requestId.current }),
       });
       requestId.current = null;
       setNotice("Crafting started. Materials were reserved from your inventory.");
@@ -150,18 +141,13 @@ export function CraftingClient({ userId }: { userId: string }) {
   async function cancel() {
     if (!active) return;
     const hasInputs = active.inputs.length > 0;
-    if (!window.confirm(hasInputs
-      ? "Cancel this activity? Reserved materials will be returned and no reward will be granted."
-      : "Cancel this activity? No reward will be granted.")) return;
-
+    if (!window.confirm(hasInputs ? "Cancel this activity? Reserved materials will be returned." : "Cancel this activity?")) return;
     setBusy("cancel");
     setError(null);
     setNotice(null);
     try {
       await api<ActivityResponse>(`/activities/${encodeURIComponent(active.id)}/cancel`, { method: "POST" });
-      setNotice(hasInputs
-        ? "Activity cancelled. Reserved materials were returned."
-        : "Activity cancelled.");
+      setNotice(hasInputs ? "Activity cancelled. Reserved materials were returned." : "Activity cancelled.");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not cancel the activity.");
@@ -177,13 +163,8 @@ export function CraftingClient({ userId }: { userId: string }) {
     setError(null);
     setNotice(null);
     try {
-      const result = await api<ClaimResponse>(
-        `/activities/${encodeURIComponent(active.id)}/claim`,
-        { method: "POST" },
-      );
-      if (result.rewardGranted) {
-        setNotice(`Craft complete: ${rewardText(result.activity.reward)}.`);
-      }
+      const result = await api<ClaimResponse>(`/activities/${encodeURIComponent(active.id)}/claim`, { method: "POST" });
+      if (result.rewardGranted) setNotice(`Craft complete: ${rewardText(result.activity.reward)}.`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not claim the activity.");
@@ -195,142 +176,145 @@ export function CraftingClient({ userId }: { userId: string }) {
 
   return (
     <>
-      <header className="bar">
-        <div className="wrap"><Brand /><UserButton /></div>
-      </header>
+      <GameHeader gold={data?.player.gold} />
       <PlayerNav current="crafting" />
-      <main className="wrap" style={{ padding: "1.5rem 1.25rem 4rem" }}>
-        <h1 className="mono" style={{ margin: "0 0 .4rem", fontSize: "1.5rem" }}>Workshop</h1>
-        <p className="muted" style={{ margin: "0 0 1rem" }}>
-          Turn gathered resources into useful materials while training production skills.
-        </p>
+      <main className="wrap game-screen">
+        <ScreenHeading
+          eyebrow="Production hall"
+          title="Workshop"
+          description="Turn raw frontier materials into travel supplies, refined stock and campaign components."
+          metric={data && <><span>Recipes</span><strong>{data.recipes.length}</strong></>}
+        />
 
-        {error && (
-          <div className="alert" role="alert" style={{ marginBottom: "1rem" }}>
-            <span>{error}</span>
-            <button className="btn ghost sm" onClick={load}>Retry</button>
-          </div>
-        )}
-        {notice && (
-          <div className="reward-notice" role="status" style={{ marginBottom: "1rem" }}>
-            <span>{notice}</span>
-            <button className="btn ghost sm" onClick={() => setNotice(null)}>Dismiss</button>
-          </div>
-        )}
-
-        {!data && !error && (
-          <div className="grid" role="status" aria-label="Loading workshop">
-            <div className="skel" style={{ height: 180 }} />
-            <div className="skel" style={{ height: 140 }} />
-          </div>
-        )}
+        {error && <div className="alert" role="alert"><span>{error}</span><button className="btn ghost sm" onClick={load}>Retry</button></div>}
+        {notice && <div className="reward-notice" role="status"><span>{notice}</span><button className="btn ghost sm" onClick={() => setNotice(null)}>Dismiss</button></div>}
+        {!data && !error && <div className="grid"><div className="skel" style={{ height: 340 }} /><div className="skel" style={{ height: 240 }} /></div>}
 
         {data && (
-          <div className="grid">
+          <div className="game-screen-stack">
             {active ? (
-              <section className="panel" aria-labelledby="active-work">
-                <h2 id="active-work">Active work</h2>
-                <div className="mono" style={{ fontWeight: 600, textTransform: "capitalize" }}>
-                  {data.activeActivityName ?? itemName(active.definitionId)}
+              <section className="craft-active game-card">
+                <div className="section-banner">
+                  <Hammer size={20} />
+                  <span>Active Craft</span>
+                  <small>{ready ? "Ready" : "Working"}</small>
                 </div>
-                <p className="muted" style={{ margin: ".35rem 0" }}>
-                  {active.inputs.length > 0
-                    ? `Reserved materials: ${costText(active.inputs)}`
-                    : "No materials reserved."}
-                </p>
-                <p className="mono muted" style={{ margin: "0 0 .75rem", fontSize: ".8rem" }}>
-                  Output: {rewardText(active.reward)}
-                </p>
-                <div className="bartrack" role="progressbar" aria-label="Activity progress"
-                  aria-valuemin={0} aria-valuemax={100}
-                  aria-valuenow={Math.round(Math.min(1, Math.max(0, 1 - remaining / total)) * 100)}>
-                  <div className="barfill" style={{ transform: `scaleX(${Math.min(1, Math.max(0, 1 - remaining / total))})` }} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap", alignItems: "center", marginTop: ".75rem" }}>
-                  <span className="mono">{ready ? "Ready to claim" : `${fmtTime(remaining)} remaining`}</span>
-                  <div className="item-actions">
-                    <button className="btn ghost" onClick={cancel} disabled={busy !== null}>
-                      {busy === "cancel" ? "Cancelling..." : "Cancel"}
-                    </button>
-                    <button className="btn" onClick={claim} disabled={busy !== null || !ready}>
-                      {busy === "claim" ? "Claiming..." : "Claim output"}
-                    </button>
+                <div className="craft-active-body">
+                  <div className="craft-scene">
+                    <div className="forge-glow" />
+                    <Hammer size={58} />
+                  </div>
+                  <div className="craft-active-copy">
+                    <div className="eyebrow">Workshop order</div>
+                    <h2>{data.activeActivityName ?? itemName(active.definitionId)}</h2>
+                    <p>{active.inputs.length ? `Reserved: ${costText(active.inputs)}` : "No materials reserved."}</p>
+                    <div className="bartrack"><div className="barfill" style={{ transform: `scaleX(${progress})` }} /></div>
+                    <div className="activity-time">
+                      <strong>{ready ? "Ready to claim" : `${fmtTime(remaining)} remaining`}</strong>
+                      <span>{rewardText(active.reward)}</span>
+                    </div>
+                    <div className="activity-actions">
+                      <button className="btn ghost" onClick={cancel} disabled={busy !== null}>{busy === "cancel" ? "Cancelling..." : "Cancel"}</button>
+                      <button className="btn gold-btn" onClick={claim} disabled={busy !== null || !ready}>{busy === "claim" ? "Claiming..." : "Claim Output"}</button>
+                    </div>
                   </div>
                 </div>
               </section>
             ) : recipe && duration ? (
-              <section className="panel" aria-labelledby="recipe">
-                <h2 id="recipe">Production recipe</h2>
-                <div className="grid" style={{ gap: ".75rem" }}>
-                  <label>
-                    <span className="label" style={{ display: "block", marginBottom: ".35rem" }}>Recipe</span>
-                    <select className="activity-select" value={recipe.id}
-                      onChange={(event) => {
-                        setSelectedRecipeId(event.target.value);
-                        setSelectedDurationId("1m");
-                        requestId.current = null;
-                        setError(null);
-                      }}>
-                      {data.recipes.map((entry) => (
-                        <option value={entry.id} key={entry.id}>{entry.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span className="label" style={{ display: "block", marginBottom: ".35rem" }}>Work time</span>
-                    <select className="activity-select" value={duration.id}
-                      onChange={(event) => {
-                        setSelectedDurationId(event.target.value);
-                        requestId.current = null;
-                        setError(null);
-                      }}>
-                      {recipe.durationOptions.map((entry) => (
-                        <option value={entry.id} key={entry.id}>{entry.label}</option>
-                      ))}
-                    </select>
-                  </label>
+              <>
+                <section className="recipe-rail game-card">
+                  <div className="section-banner">
+                    <Hammer size={20} />
+                    <span>Recipes</span>
+                    <small>Choose a craft</small>
+                  </div>
+                  <div className="recipe-tabs">
+                    {data.recipes.map((entry) => (
+                      <button
+                        key={entry.id}
+                        className={entry.id === recipe.id ? "recipe-tab selected" : "recipe-tab"}
+                        onClick={() => { setSelectedRecipeId(entry.id); setSelectedDurationId("1m"); }}
+                      >
+                        <span className="recipe-tab-icon"><ItemGlyph id={entry.reward.itemId} size={24} /></span>
+                        <span>{entry.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
 
-                  <div>
-                    <div className="mono" style={{ fontWeight: 600 }}>{recipe.name}</div>
-                    <p className="muted" style={{ margin: ".25rem 0 .65rem" }}>{recipe.description}</p>
-                    <div className="row">
-                      <span>Requires</span>
-                      <strong className="mono">{costText(duration.inputs)}</strong>
-                    </div>
-                    <div className="row">
-                      <span>Produces</span>
-                      <strong className="mono">{rewardText(duration.reward)}</strong>
-                    </div>
-                    <div className="row">
-                      <span>Skill</span>
-                      <strong>{itemName(recipe.skillId)}</strong>
-                    </div>
+                <section className="craft-detail game-card">
+                  <div className="craft-detail-art">
+                    <div className="forge-glow" />
+                    <ItemGlyph id={recipe.reward.itemId} size={72} />
+                    <div className="craft-detail-art-label">{itemName(recipe.reward.itemId)}</div>
                   </div>
 
-                  {!canAfford && (
-                    <p className="muted" style={{ margin: 0, fontSize: ".85rem" }}>
-                      Gather more materials or choose a shorter work period.
-                    </p>
-                  )}
-                  <button className="btn" onClick={start} disabled={busy !== null || !canAfford}>
-                    {busy === "start" ? "Starting..." : "Start crafting"}
-                  </button>
-                </div>
-              </section>
+                  <div className="craft-detail-copy">
+                    <div className="eyebrow">Production recipe</div>
+                    <h2>{recipe.name}</h2>
+                    <p>{recipe.description}</p>
+
+                    <div className="craft-skill-row">
+                      <SkillGlyph id={recipe.skillId} />
+                      <span>Trains <strong>{itemName(recipe.skillId)}</strong></span>
+                    </div>
+
+                    <div className="material-requirements">
+                      <span className="subheading">Materials</span>
+                      {duration.inputs.map((input) => {
+                        const owned = inventory.get(input.itemId) ?? 0;
+                        const enough = owned >= input.quantity;
+                        return (
+                          <div className={enough ? "material-row enough" : "material-row missing"} key={input.itemId}>
+                            <ItemGlyph id={input.itemId} size={24} />
+                            <span>{itemName(input.itemId)}</span>
+                            <strong>{owned.toLocaleString()} / {input.quantity.toLocaleString()}</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <label className="duration-control">
+                      <span><TimerReset size={18} /> Craft time</span>
+                      <select className="activity-select" value={duration.id} onChange={(event) => setSelectedDurationId(event.target.value)}>
+                        {recipe.durationOptions.map((entry) => <option value={entry.id} key={entry.id}>{entry.label}</option>)}
+                      </select>
+                    </label>
+
+                    <div className="craft-output">
+                      <Sparkles size={20} />
+                      <span>Output</span>
+                      <strong>{rewardText(duration.reward)}</strong>
+                    </div>
+
+                    <button className="btn gold-btn craft-start-button" onClick={start} disabled={busy !== null || !canAfford}>
+                      <Clock3 size={18} />
+                      {busy === "start" ? "Starting..." : canAfford ? "Start Crafting" : "Missing Materials"}
+                    </button>
+                  </div>
+                </section>
+              </>
             ) : (
               <p className="empty">No production recipes are available.</p>
             )}
 
-            <section className="panel" aria-labelledby="materials">
-              <h2 id="materials">Available materials</h2>
-              {data.inventory.length === 0 ? (
-                <p className="empty">No materials yet. Gather resources from the Dashboard first.</p>
-              ) : data.inventory.map((item) => (
-                <div className="row" key={item.itemId}>
-                  <span>{itemName(item.itemId)}</span>
-                  <span className="mono">{item.quantity.toLocaleString()}</span>
-                </div>
-              ))}
+            <section className="game-card">
+              <div className="section-banner">
+                <Sparkles size={20} />
+                <span>Material Stores</span>
+                <small>{data.inventory.length} stacks</small>
+              </div>
+              <div className="material-store-grid">
+                {data.inventory.length === 0 ? (
+                  <p className="empty padded-empty">No materials yet. Gather resources from Home first.</p>
+                ) : data.inventory.map((item) => (
+                  <div className="material-store-item" key={item.itemId}>
+                    <ItemGlyph id={item.itemId} size={24} />
+                    <span>{itemName(item.itemId)}</span>
+                    <strong>{item.quantity.toLocaleString()}</strong>
+                  </div>
+                ))}
+              </div>
             </section>
           </div>
         )}
