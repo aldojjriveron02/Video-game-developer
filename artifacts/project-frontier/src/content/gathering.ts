@@ -1,4 +1,5 @@
 import type { Reward } from "../game/contracts";
+import { getSkillDefinition } from "./skills";
 
 export type ActivityDefinition = {
   id: string;
@@ -15,7 +16,14 @@ const gatheringDefinitions = [
     name: "Gather wood",
     description: "Collect sturdy wood from the nearby forest.",
     durationSeconds: 30,
-    reward: { gold: 12, xp: 8, itemId: "wood", quantity: 3 },
+    reward: {
+      gold: 12,
+      xp: 8,
+      itemId: "wood",
+      quantity: 3,
+      skillId: "woodcutting",
+      skillXp: 8,
+    },
     version: 1,
   },
 ] satisfies ActivityDefinition[];
@@ -35,7 +43,11 @@ function validateDefinition(definition: ActivityDefinition): ActivityDefinition 
     !Number.isInteger(definition.reward.xp) ||
     definition.reward.xp < 0 ||
     !Number.isInteger(definition.reward.quantity) ||
-    definition.reward.quantity <= 0
+    definition.reward.quantity <= 0 ||
+    ((definition.reward.skillId == null) !== (definition.reward.skillXp == null)) ||
+    (definition.reward.skillId != null && !getSkillDefinition(definition.reward.skillId)) ||
+    (definition.reward.skillXp != null &&
+      (!Number.isInteger(definition.reward.skillXp) || definition.reward.skillXp <= 0))
   ) {
     throw new Error(`Invalid activity definition: ${definition.id || "unknown"}`);
   }

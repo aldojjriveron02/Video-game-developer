@@ -149,7 +149,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
     )[0];
     if (!player) throw new GameError("unauthorized", "A player identity is required.");
 
-    const [serverTime, activityRows, inventoryRows, ledgerRows] = await Promise.all([
+    const [serverTime, activityRows, inventoryRows, ledgerRows, skillRows] = await Promise.all([
       this.database.execute(sql`SELECT clock_timestamp() AS server_time`),
       this.database.execute(sql`
         SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
@@ -170,6 +170,12 @@ export class PostgresGameRepository implements GameRepositoryContract {
         WHERE player_id = ${playerId}::uuid
         ORDER BY created_at DESC
         LIMIT 20
+      `),
+      this.database.execute(sql`
+        SELECT skill_id, xp
+        FROM player_skills
+        WHERE player_id = ${playerId}::uuid
+        ORDER BY skill_id
       `),
     ]);
 
@@ -207,6 +213,10 @@ export class PostgresGameRepository implements GameRepositoryContract {
           createdAt: entry.createdAt.toISOString(),
         };
       }),
+      skillXp: rowsFrom(skillRows).map((row) => ({
+        skillId: String(row.skill_id),
+        xp: Number(row.xp),
+      })),
     };
   }
 
@@ -353,12 +363,31 @@ export class PostgresGameRepository implements GameRepositoryContract {
           `),
         )[0];
         if (!savedLedger) throw new Error("Claimed activity is missing its reward ledger entry.");
+        let skillProgression: ClaimedActivity["skillProgression"] = null;
+        if (activity.reward.skillId) {
+          const skill = rowsFrom(
+            await transaction.execute(sql`
+              SELECT xp
+              FROM player_skills
+              WHERE player_id = ${playerId}::uuid AND skill_id = ${activity.reward.skillId}
+              LIMIT 1
+            `),
+          )[0];
+          if (skill) {
+            skillProgression = {
+              skillId: activity.reward.skillId,
+              progression: progressionForXp(Number(skill.xp)),
+            };
+          }
+        }
         return {
           activity,
           ledger: mapLedger(savedLedger),
           rewardGranted: false,
           levelsGained: 0,
           progression: progressionForXp(Number(player.xp)),
+          skillLevelsGained: 0,
+          skillProgression,
         };
       }
 
@@ -392,6 +421,33 @@ export class PostgresGameRepository implements GameRepositoryContract {
         ON CONFLICT (player_id, item_id)
         DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity
       `);
+
+      let skillLevelsGained = 0;
+      let skillProgression: ClaimedActivity["skillProgression"] = null;
+      if (reward.skillId && reward.skillXp) {
+        const skillRow = rowsFrom(
+          await transaction.execute(sql`
+            INSERT INTO player_skills (player_id, skill_id, xp, updated_at)
+            VALUES (${playerId}::uuid, ${reward.skillId}, ${reward.skillXp}, ${serverTime})
+            ON CONFLICT (player_id, skill_id)
+            DO UPDATE SET
+              xp = player_skills.xp + EXCLUDED.xp,
+              updated_at = EXCLUDED.updated_at
+            RETURNING xp
+          `),
+        )[0];
+        if (!skillRow) throw new Error("Skill reward was not persisted.");
+        const afterSkillXp = Number(skillRow.xp);
+        const beforeSkillXp = afterSkillXp - reward.skillXp;
+        const beforeSkillProgression = progressionForXp(beforeSkillXp);
+        const afterSkillProgression = progressionForXp(afterSkillXp);
+        skillLevelsGained = afterSkillProgression.level - beforeSkillProgression.level;
+        skillProgression = {
+          skillId: reward.skillId,
+          progression: afterSkillProgression,
+        };
+      }
+
       const ledgerRow = rowsFrom(
         await transaction.execute(sql`
           INSERT INTO reward_ledger (player_id, activity_id, kind, reward, created_at)
@@ -412,6 +468,8 @@ export class PostgresGameRepository implements GameRepositoryContract {
         rewardGranted: true,
         levelsGained: afterProgression.level - beforeProgression.level,
         progression: afterProgression,
+        skillLevelsGained,
+        skillProgression,
       };
     });
   }

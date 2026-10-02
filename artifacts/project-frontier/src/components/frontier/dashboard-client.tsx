@@ -28,7 +28,12 @@ const fmtTime = (s: number) => {
   return `${String(m).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 };
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
-const rewardText = (r: Reward) => `${r.quantity} x ${r.itemId}, ${r.gold} gold, ${r.xp} xp`;
+const rewardText = (r: Reward) => {
+  const skill = r.skillId && r.skillXp
+    ? `, ${r.skillXp} ${r.skillId.replaceAll("-", " ")} xp`
+    : "";
+  return `${r.quantity} x ${r.itemId}, ${r.gold} gold, ${r.xp} xp${skill}`;
+};
 
 export function DashboardClient({ userId }: { userId: string }) {
   const [data, setData] = useState<Dashboard | null>(null);
@@ -202,6 +207,12 @@ export function DashboardClient({ userId }: { userId: string }) {
                     +{claimNotice.activity.reward.quantity} {claimNotice.activity.reward.itemId}
                     {" · "}+{claimNotice.activity.reward.gold} gold
                     {" · "}+{claimNotice.activity.reward.xp} XP
+                    {claimNotice.activity.reward.skillId && claimNotice.activity.reward.skillXp
+                      ? ` · +${claimNotice.activity.reward.skillXp} ${claimNotice.activity.reward.skillId.replaceAll("-", " ")} XP`
+                      : ""}
+                    {claimNotice.skillLevelsGained > 0 && claimNotice.skillProgression
+                      ? ` · ${claimNotice.skillProgression.skillId.replaceAll("-", " ")} level ${claimNotice.skillProgression.progression.level}`
+                      : ""}
                   </div>
                 </div>
                 <button className="btn ghost" onClick={() => setClaimNotice(null)} aria-label="Dismiss reward notification">Dismiss</button>

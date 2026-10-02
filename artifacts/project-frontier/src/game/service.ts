@@ -1,10 +1,11 @@
-import type { Dashboard, Reward } from "./contracts";
+import type { Dashboard, Reward, SkillsResponse } from "./contracts";
 import { getActivityDefinition, getGatheringDefinition } from "../content/gathering";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
 import { EQUIPMENT_SLOTS, getItemDefinition, type EquipmentSlot } from "../content/items";
 import { parseEquipCommand, parseEquipmentSlot, type InventoryState, type InventoryView } from "./equipment";
+import { skillDefinitions } from "../content/skills";
 
 export type Player = {
   id: string;
@@ -39,11 +40,17 @@ export type ClaimedActivity = {
   rewardGranted: boolean;
   levelsGained: number;
   progression: Progression;
+  skillLevelsGained: number;
+  skillProgression: { skillId: string; progression: Progression } | null;
+};
+
+export type RepositoryDashboard = Omit<Dashboard, "gathering" | "progression" | "skills"> & {
+  skillXp: { skillId: string; xp: number }[];
 };
 
 export interface GameRepository {
   resolveClerkIdentity(clerkUserId: string, displayName: string): Promise<Player>;
-  getDashboard(playerId: string): Promise<Omit<Dashboard, "gathering" | "progression">>;
+  getDashboard(playerId: string): Promise<RepositoryDashboard>;
   startActivity(playerId: string, command: StartActivityCommand): Promise<ActivityRecord>;
   cancelActivity(playerId: string, activityId: string): Promise<ActivityRecord>;
   claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity>;
@@ -70,9 +77,15 @@ export class GameService {
   async dashboardForPlayer(playerId: string): Promise<Dashboard> {
     const dashboard = await this.repository.getDashboard(playerId);
     const definition = getGatheringDefinition();
+    const xpBySkill = new Map(dashboard.skillXp.map((entry) => [entry.skillId, entry.xp]));
+    const { skillXp: _skillXp, ...base } = dashboard;
     return {
-      ...dashboard,
+      ...base,
       progression: progressionForXp(dashboard.player.xp),
+      skills: skillDefinitions.map((skill) => ({
+        ...skill,
+        ...progressionForXp(xpBySkill.get(skill.id) ?? 0),
+      })),
       gathering: {
         id: definition.id,
         name: definition.name,
@@ -81,6 +94,11 @@ export class GameService {
         reward: { ...definition.reward },
       },
     };
+  }
+
+  async skillsForPlayer(playerId: string): Promise<SkillsResponse> {
+    const dashboard = await this.dashboardForPlayer(playerId);
+    return { player: dashboard.player, skills: dashboard.skills };
   }
 
   async startActivity(playerId: string, input: unknown): Promise<ActivityRecord> {

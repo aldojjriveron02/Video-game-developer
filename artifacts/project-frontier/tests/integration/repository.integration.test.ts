@@ -99,7 +99,14 @@ describe("PostgreSQL game repository", () => {
 
     expect(retry.id).toBe(original.id);
     expect(original.finishesAt.getTime() - original.startedAt.getTime()).toBe(30_000);
-    expect(retry.reward).toEqual({ gold: 12, xp: 8, itemId: "wood", quantity: 3 });
+    expect(retry.reward).toEqual({
+      gold: 12,
+      xp: 8,
+      itemId: "wood",
+      quantity: 3,
+      skillId: "woodcutting",
+      skillXp: 8,
+    });
 
     const persistedDashboard = await new PostgresGameRepository(database).getDashboard(player.id);
     expect(persistedDashboard.activeActivity?.id).toBe(original.id);
@@ -168,6 +175,7 @@ describe("PostgreSQL game repository", () => {
     expect(dashboard.player.gold).toBe(firstStart.reward.gold);
     expect(dashboard.player.xp).toBe(firstStart.reward.xp);
     expect(dashboard.inventory).toEqual([{ itemId: "wood", quantity: 3 }]);
+    expect(dashboard.skillXp).toEqual([{ skillId: "woodcutting", xp: 8 }]);
     expect(dashboard.ledger).toHaveLength(1);
   });
 
@@ -200,6 +208,10 @@ describe("PostgreSQL game repository", () => {
       level: 2, totalXp: 24, xpIntoLevel: 0, xpForNextLevel: 48, xpRemaining: 48,
     });
     expect(dashboard.inventory).toEqual([{ itemId: "wood", quantity: 3 }]);
+    expect(dashboard.skills.find((skill) => skill.id === "woodcutting")).toMatchObject({
+      totalXp: 8,
+      level: 1,
+    });
     expect(dashboard.ledger).toHaveLength(1);
     expect(dashboard.activeActivity).toBeNull();
   });

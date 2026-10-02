@@ -95,6 +95,24 @@ export const inventory = pgTable(
   ],
 );
 
+export const playerSkills = pgTable(
+  "player_skills",
+  {
+    playerId: uuid("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    skillId: varchar("skill_id", { length: 32 }).notNull(),
+    xp: integer("xp").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.playerId, table.skillId] }),
+    check("player_skills_xp_nonnegative", sql`${table.xp} >= 0`),
+  ],
+);
+
 export const rewardLedger = pgTable(
   "reward_ledger",
   {
@@ -141,6 +159,7 @@ export const frontierSchema = {
   clerkIdentities,
   activities,
   inventory,
+  playerSkills,
   rewardLedger,
   equipmentInstances,
 };

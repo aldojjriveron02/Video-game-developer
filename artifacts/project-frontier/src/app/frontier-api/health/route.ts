@@ -8,6 +8,7 @@ import {
 } from "../../../server/auth/clerk-keys";
 
 export async function GET() {
+  const revision = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ?? "local";
   const publishableRaw =
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
     process.env.CLERK_PUBLISHABLE_KEY;
@@ -70,7 +71,7 @@ export async function GET() {
       : "degraded";
 
   return NextResponse.json(
-    { status, app: "ok", database, auth },
+    { status, app: "ok", database, revision, auth },
     { status: status === "ok" ? 200 : 503 },
   );
 }
