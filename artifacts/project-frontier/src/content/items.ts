@@ -8,9 +8,19 @@ export type EquipmentSlot = (typeof EQUIPMENT_SLOTS)[number]["id"];
 export type ResourceDefinition = {
   id: string; name: string; description: string; kind: "resource";
 };
+export type CombatBonuses = {
+  strength?: number;
+  defense?: number;
+  dexterity?: number;
+  agility?: number;
+  vitality?: number;
+  tactics?: number;
+};
+
 export type EquipmentDefinition = {
   id: string; name: string; description: string; kind: "equipment";
-  slot: EquipmentSlot; rarity: "common";
+  slot: EquipmentSlot; rarity: "common" | "uncommon" | "rare";
+  combatBonuses: CombatBonuses;
 };
 export type ItemDefinition = ResourceDefinition | EquipmentDefinition;
 
@@ -28,14 +38,45 @@ const definitions: readonly ItemDefinition[] = [
   { id: "cloth", name: "Cloth", kind: "resource", description: "Woven frontier cloth ready for future tailoring recipes." },
   { id: "cooked-fish", name: "Cooked Fish", kind: "resource", description: "Prepared river fish ready for travel or later food systems." },
   { id: "leather", name: "Leather", kind: "resource", description: "Tanned hide ready for leatherworking recipes." },
-  { id: "herbal-tonic", name: "Herbal Tonic", kind: "resource", description: "A basic alchemical tonic prepared from frontier plants." },\n  { id: "training-mark", name: "Training Mark", kind: "resource", description: "A stamped record earned from completed combat training sessions." },
+  { id: "herbal-tonic", name: "Herbal Tonic", kind: "resource", description: "A basic alchemical tonic prepared from frontier plants." },
+  { id: "training-mark", name: "Training Mark", kind: "resource", description: "A stamped record earned from completed combat training sessions." },
   { id: "field-axe", name: "Field Axe", kind: "equipment", slot: "hand", rarity: "common",
-    description: "A basic station-issued axe. Starter hand equipment; it does not change gathering rewards or speed." },
+    combatBonuses: { strength: 1 },
+    description: "A basic station-issued axe. Its weight gives a small Strength bonus in combat." },
   { id: "work-vest", name: "Work Vest", kind: "equipment", slot: "body", rarity: "common",
-    description: "A sturdy station-issued vest. Starter body equipment; no combat or stat effects are enabled." },
+    combatBonuses: { vitality: 1 },
+    description: "A sturdy station-issued vest that provides a small Vitality bonus in combat." },
+  { id: "wolf-fang-knife", name: "Wolf Fang Knife", kind: "equipment", slot: "hand", rarity: "uncommon",
+    combatBonuses: { dexterity: 2, agility: 1 },
+    description: "A light frontier blade fashioned around a ridge-wolf fang. Improves Dexterity and Agility." },
+  { id: "boar-hide-coat", name: "Boar Hide Coat", kind: "equipment", slot: "body", rarity: "uncommon",
+    combatBonuses: { defense: 2, vitality: 2 },
+    description: "Heavy cured hide from an ashback boar. Improves Defense and Vitality." },
+  { id: "scout-hood", name: "Scout Hood", kind: "equipment", slot: "head", rarity: "rare",
+    combatBonuses: { tactics: 2, agility: 2 },
+    description: "Recovered bandit field gear built for awareness and movement. Improves Tactics and Agility." },
 ];
 
 export const STARTER_EQUIPMENT = ["field-axe", "work-vest"] as const;
 export function getItemDefinition(id: string): ItemDefinition | undefined {
   return definitions.find((item) => item.id === id);
+}
+
+export function combatBonusesForEquipment(itemIds: readonly string[]): Required<CombatBonuses> {
+  const total: Required<CombatBonuses> = {
+    strength: 0,
+    defense: 0,
+    dexterity: 0,
+    agility: 0,
+    vitality: 0,
+    tactics: 0,
+  };
+  for (const itemId of itemIds) {
+    const item = getItemDefinition(itemId);
+    if (!item || item.kind !== "equipment") continue;
+    for (const key of Object.keys(total) as (keyof CombatBonuses)[]) {
+      total[key] += item.combatBonuses[key] ?? 0;
+    }
+  }
+  return total;
 }
