@@ -1,4 +1,4 @@
-import type { CraftingResponse, Dashboard, ResourceCost, Reward, SkillsResponse } from "./contracts";
+import type { CombatResponse, CraftingResponse, Dashboard, ResourceCost, Reward, SkillsResponse } from "./contracts";
 import {
   activityDurationPresets,
   getActivityDurationPreset,
@@ -9,6 +9,7 @@ import {
 } from "../content/gathering";
 import { getActivityDefinition } from "../content/activities";
 import { getCraftingDefinitions } from "../content/crafting";
+import { getCombatDefinitions } from "../content/combat";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
@@ -161,6 +162,36 @@ export class GameService {
           durationSeconds: preset.durationSeconds,
           reward: rewardForDuration(recipe.reward, preset.id),
           inputs: inputsForDuration(recipe.inputs, preset.id),
+        })),
+      })),
+    };
+  }
+
+  async combatForPlayer(playerId: string): Promise<CombatResponse> {
+    const dashboard = await this.repository.getDashboard(playerId);
+    const activeDefinition = dashboard.activeActivity
+      ? getActivityDefinition(dashboard.activeActivity.definitionId)
+      : undefined;
+
+    return {
+      serverTime: dashboard.serverTime,
+      player: dashboard.player,
+      activeActivity: dashboard.activeActivity,
+      activeActivityName: activeDefinition?.name ?? null,
+      drills: getCombatDefinitions().map((drill) => ({
+        id: drill.id,
+        name: drill.name,
+        description: drill.description,
+        durationSeconds: drill.durationSeconds,
+        reward: { ...drill.reward },
+        inputs: [],
+        skillId: drill.reward.skillId ?? "",
+        durationOptions: activityDurationPresets.map((preset) => ({
+          id: preset.id,
+          label: preset.label,
+          durationSeconds: preset.durationSeconds,
+          reward: rewardForDuration(drill.reward, preset.id),
+          inputs: [],
         })),
       })),
     };
