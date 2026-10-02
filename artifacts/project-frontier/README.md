@@ -34,14 +34,14 @@ Project Frontier is a Next.js 16 App Router modular monolith. The Next server ow
 - `GET /frontier-api/skills` — authenticated core combat, gathering and production skill progression.
 - `PUT /frontier-api/equipment/{slot}` — authenticated strict JSON `{ "instanceId": "<UUID>" }`; equips owned, compatible gear and returns the updated inventory. Slots are `hand`, `body` and `head`.
 - `DELETE /frontier-api/equipment/{slot}` — authenticated unequip; returns the updated inventory. Retrying an empty slot is harmless.
-- `POST /frontier-api/activities` — authenticated strict JSON command `{ "definitionId": "<activity-id>", "requestId": "<UUID>" }`. The server validates the requested activity and owns its duration/reward definition. Returns `{ "activity": ... }`.
+- `POST /frontier-api/activities` — authenticated strict JSON command `{ "definitionId": "<activity-id>", "durationId": "1m|5m|15m|1h|4h|8h", "requestId": "<UUID>" }`. The duration defaults to `1m` for older clients. The server validates the activity and duration preset and owns all timing and reward calculation. Returns `{ "activity": ... }`.
 - `POST /frontier-api/activities/{id}/cancel` — authenticated owner-only cancellation. Cancelling is idempotent, grants no reward, records server cancellation time and immediately frees the player to start another activity.
 - `POST /frontier-api/activities/{id}/claim` — authenticated owner-only claim. The request body is ignored; reward and finish time are derived exclusively from persisted state and database time. Returns activity, ledger, reward-granted flag, levels gained and progression.
 - `GET /frontier-api/health` — public sanitized app/database status; database configuration or connection failures report HTTP 503.
 
 ## Architecture and integrity
 
-- `src/content` holds validated, versioned activity definitions. The starter gathering set currently covers Mining, Woodcutting, Fishing, Hunting, Herbalism and Foraging. Each 30-second development activity snapshots its server-owned duration and fixed reward into the activity record at start.
+- `src/content` holds validated, versioned activity definitions. The starter gathering set currently covers Mining, Woodcutting, Fishing, Hunting, Herbalism and Foraging. Players can choose server-owned work periods of 1 minute, 5 minutes, 15 minutes, 1 hour, 4 hours or 8 hours. Reward snapshots scale from the one-minute base rate and are stored with the activity when work starts.
 - `src/game` contains the game contract, command validation, errors, and service boundary. `src/database` owns Drizzle schema/migrations and the PostgreSQL repository.
 - `src/server/identity.ts` is the only boundary from Clerk subject identity to an internal player UUID. Player rows are lazily provisioned from real authenticated Clerk identities; no seeded/test identity is used by application paths.
 - Each start, cancel and claim takes a transaction-scoped `FOR UPDATE` lock on that player's row. A partial unique index independently enforces one active activity per player. `(player_id, request_id)` makes retries return the original start. Cancellation is server-timestamped, rewardless and idempotent, so switching jobs cannot duplicate rewards.
@@ -51,7 +51,7 @@ Project Frontier is a Next.js 16 App Router modular monolith. The Next server ow
 
 ## Player resources and progression
 
-Claimed gathering rewards persist in the player's PostgreSQL inventory, gold balance, lifetime character XP, and the relevant skill XP. The dashboard lets the player choose among starter Mining, Woodcutting, Fishing, Hunting, Herbalism and Foraging jobs; only one timed activity can run at once.
+Claimed gathering rewards persist in the player's PostgreSQL inventory, gold balance, lifetime character XP, and the relevant skill XP. The dashboard lets the player choose a gathering job and work period; only one timed activity can run at once, and the player can cancel it to switch jobs.
 The dashboard shows stored resources, level, lifetime XP, and progress toward the next level.
 Level is derived from lifetime XP rather than stored separately, so it cannot drift from the saved XP.
 Everyone starts at level 1; advancing from level L costs 24 × L XP (level 2 at 24 total XP,

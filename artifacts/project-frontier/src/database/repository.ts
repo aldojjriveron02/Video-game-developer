@@ -8,7 +8,7 @@ import { progressionForXp } from "../game/progression";
 import { EquipmentRepository, grantStarterEquipment } from "./equipment-repository";
 import type { EquipmentSlot } from "../content/items";
 import type { InventoryState } from "../game/equipment";
-import { getActivityDefinition } from "../content/gathering";
+import { getActivityDefinition, getActivityDurationPreset, rewardForDuration } from "../content/gathering";
 import type {
   ActivityRecord,
   ClaimedActivity,
@@ -220,7 +220,10 @@ export class PostgresGameRepository implements GameRepositoryContract {
     };
   }
 
-  async startActivity(playerId: string, command: { definitionId: string; requestId: string }) {
+  async startActivity(
+    playerId: string,
+    command: { definitionId: string; durationId?: string; requestId: string },
+  ) {
     return this.database.transaction(async (transaction) => {
       const player = rowsFrom(
         await transaction.execute(
@@ -255,9 +258,12 @@ export class PostgresGameRepository implements GameRepositoryContract {
       }
 
       const definition = getActivityDefinition(command.definitionId);
-      if (!definition) {
+      const durationId = command.durationId ?? "1m";
+      const duration = getActivityDurationPreset(durationId);
+      if (!definition || !duration) {
         throw new GameError("invalid_request", "The requested activity is not available.");
       }
+      const reward = rewardForDuration(definition.reward, durationId);
       const inserted = rowsFrom(
         await transaction.execute(sql`
           WITH instant AS (SELECT clock_timestamp() AS started_at)
@@ -270,8 +276,8 @@ export class PostgresGameRepository implements GameRepositoryContract {
             'active',
             ${command.requestId}::uuid,
             instant.started_at,
-            instant.started_at + (${definition.durationSeconds} * INTERVAL '1 second'),
-            ${JSON.stringify(definition.reward)}::jsonb
+            instant.started_at + (${duration.durationSeconds} * INTERVAL '1 second'),
+            ${JSON.stringify(reward)}::jsonb
           FROM instant
           RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
         `),

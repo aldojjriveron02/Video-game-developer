@@ -42,6 +42,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   const [claimNotice, setClaimNotice] = useState<ClaimResponse | null>(null);
   const [activityNotice, setActivityNotice] = useState<string | null>(null);
   const [selectedActivityId, setSelectedActivityId] = useState("gather-wood");
+  const [selectedDurationId, setSelectedDurationId] = useState("1m");
   const [busy, setBusy] = useState<null | "start" | "claim" | "cancel">(null);
   const [now, setNow] = useState(() => Date.now());
   const offset = useRef(0);
@@ -61,6 +62,13 @@ export function DashboardClient({ userId }: { userId: string }) {
         d.gatheringActivities.some((activity) => activity.id === current)
           ? current
           : (d.gatheringActivities[0]?.id ?? d.gathering.id),
+      );
+      setSelectedDurationId((current) =>
+        d.gatheringActivities.some((activity) =>
+          activity.durationOptions.some((duration) => duration.id === current),
+        )
+          ? current
+          : "1m",
       );
       setData(d);
       setLoadError(null);
@@ -100,6 +108,11 @@ export function DashboardClient({ userId }: { userId: string }) {
   const activeDefinition: ActivityDefinitionView | null = active && data
     ? data.gatheringActivities.find((activity) => activity.id === active.definitionId) ?? selectedActivity
     : selectedActivity;
+  const selectedDuration = selectedActivity
+    ? selectedActivity.durationOptions.find((duration) => duration.id === selectedDurationId)
+      ?? selectedActivity.durationOptions[0]
+      ?? null
+    : null;
   const serverNow = now + offset.current;
   const remainingMs = active ? Date.parse(active.finishesAt) - serverNow : 0;
   const total = active ? Date.parse(active.finishesAt) - Date.parse(active.startedAt) : 1;
@@ -112,7 +125,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   }, [ready, active, load]);
 
   async function start() {
-    if (!data || !selectedActivity) return;
+    if (!data || !selectedActivity || !selectedDuration) return;
     setClaimNotice(null);
     setActivityNotice(null);
     setBusy("start"); setActionError(null);
@@ -121,7 +134,11 @@ export function DashboardClient({ userId }: { userId: string }) {
       await api<ActivityResponse>("/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ definitionId: selectedActivity.id, requestId: requestId.current }),
+        body: JSON.stringify({
+          definitionId: selectedActivity.id,
+          durationId: selectedDuration.id,
+          requestId: requestId.current,
+        }),
       });
       requestId.current = null;
       polls.current = 0;
@@ -252,13 +269,32 @@ export function DashboardClient({ userId }: { userId: string }) {
                       ))}
                     </select>
                   </label>
+                  <label>
+                    <span className="label" style={{ display: "block", marginBottom: ".35rem" }}>Work time</span>
+                    <select
+                      className="activity-select"
+                      value={selectedDuration?.id ?? "1m"}
+                      onChange={(event) => {
+                        setSelectedDurationId(event.target.value);
+                        setActionError(null);
+                        requestId.current = null;
+                      }}
+                      disabled={busy !== null}
+                    >
+                      {selectedActivity.durationOptions.map((duration) => (
+                        <option value={duration.id} key={duration.id}>{duration.label}</option>
+                      ))}
+                    </select>
+                  </label>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
                     <div>
                       <div className="mono" style={{ fontWeight: 600 }}>{selectedActivity.name}</div>
                       <p className="muted" style={{ margin: ".25rem 0" }}>{selectedActivity.description}</p>
-                      <p className="mono muted" style={{ margin: 0, fontSize: ".8rem" }}>
-                        {selectedActivity.durationSeconds}s &middot; {rewardText(selectedActivity.reward)}
-                      </p>
+                      {selectedDuration && (
+                        <p className="mono muted" style={{ margin: 0, fontSize: ".8rem" }}>
+                          {selectedDuration.label} &middot; {rewardText(selectedDuration.reward)}
+                        </p>
+                      )}
                     </div>
                     <button className="btn" onClick={start} disabled={busy !== null}>
                       {busy === "start" ? "Starting..." : actionError && requestId.current ? "Retry start" : "Start activity"}

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const startActivityCommandSchema = z
   .object({
     definitionId: z.string().min(1).max(64).regex(/^[a-z0-9-]+$/),
+    durationId: z.enum(["1m", "5m", "15m", "1h", "4h", "8h"]).default("1m"),
     requestId: z.string().uuid(),
   })
   .strict();

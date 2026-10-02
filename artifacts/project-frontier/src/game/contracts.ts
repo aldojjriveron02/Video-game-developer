@@ -20,12 +20,19 @@ export type ActivityView = {
   startedAt: string; finishesAt: string; claimedAt: string | null; cancelledAt: string | null;
   reward: Reward;
 };
+export type ActivityDurationOptionView = {
+  id: string;
+  label: string;
+  durationSeconds: number;
+  reward: Reward;
+};
 export type ActivityDefinitionView = {
   id: string;
   name: string;
   description: string;
   durationSeconds: number;
   reward: Reward;
+  durationOptions: ActivityDurationOptionView[];
 };
 export type ActivityResponse = { activity: ActivityView };
 export type ClaimResponse = {

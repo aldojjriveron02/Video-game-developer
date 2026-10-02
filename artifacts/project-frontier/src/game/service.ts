@@ -1,5 +1,12 @@
 import type { Dashboard, Reward, SkillsResponse } from "./contracts";
-import { getActivityDefinition, getGatheringDefinition, getGatheringDefinitions } from "../content/gathering";
+import {
+  activityDurationPresets,
+  getActivityDefinition,
+  getActivityDurationPreset,
+  getGatheringDefinition,
+  getGatheringDefinitions,
+  rewardForDuration,
+} from "../content/gathering";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
@@ -93,6 +100,12 @@ export class GameService {
         description: definition.description,
         durationSeconds: definition.durationSeconds,
         reward: { ...definition.reward },
+        durationOptions: activityDurationPresets.map((preset) => ({
+          id: preset.id,
+          label: preset.label,
+          durationSeconds: preset.durationSeconds,
+          reward: rewardForDuration(definition.reward, preset.id),
+        })),
       },
       gatheringActivities: definitions.map((activity) => ({
         id: activity.id,
@@ -100,6 +113,12 @@ export class GameService {
         description: activity.description,
         durationSeconds: activity.durationSeconds,
         reward: { ...activity.reward },
+        durationOptions: activityDurationPresets.map((preset) => ({
+          id: preset.id,
+          label: preset.label,
+          durationSeconds: preset.durationSeconds,
+          reward: rewardForDuration(activity.reward, preset.id),
+        })),
       })),
     };
   }
@@ -112,7 +131,8 @@ export class GameService {
   async startActivity(playerId: string, input: unknown): Promise<ActivityRecord> {
     const command = parseStartActivityCommand(input);
     const definition = getActivityDefinition(command.definitionId);
-    if (!definition) {
+    const duration = getActivityDurationPreset(command.durationId);
+    if (!definition || !duration) {
       throw new GameError("invalid_request", "The requested activity is not available.");
     }
     return this.repository.startActivity(playerId, command);

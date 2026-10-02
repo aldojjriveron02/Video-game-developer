@@ -98,7 +98,7 @@ describe("PostgreSQL game repository", () => {
     const retry = await new PostgresGameRepository(database).startActivity(player.id, command);
 
     expect(retry.id).toBe(original.id);
-    expect(original.finishesAt.getTime() - original.startedAt.getTime()).toBe(30_000);
+    expect(original.finishesAt.getTime() - original.startedAt.getTime()).toBe(60_000);
     expect(retry.reward).toEqual({
       gold: 12,
       xp: 8,
@@ -177,6 +177,25 @@ describe("PostgreSQL game repository", () => {
     expect(dashboard.inventory).toEqual([{ itemId: "wood", quantity: 3 }]);
     expect(dashboard.skillXp).toEqual([{ skillId: "woodcutting", xp: 8 }]);
     expect(dashboard.ledger).toHaveLength(1);
+  });
+
+  it("scales duration and snapshotted rewards from server-owned presets", async () => {
+    const player = await createPlayer();
+    const activity = await repository.startActivity(player.id, {
+      definitionId: "gather-wood",
+      durationId: "5m",
+      requestId: randomUUID(),
+    });
+
+    expect(activity.finishesAt.getTime() - activity.startedAt.getTime()).toBe(300_000);
+    expect(activity.reward).toEqual({
+      gold: 60,
+      xp: 40,
+      itemId: "wood",
+      quantity: 15,
+      skillId: "woodcutting",
+      skillXp: 40,
+    });
   });
 
   it("routes each gathering activity into its own resource stack and skill XP", async () => {
