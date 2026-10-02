@@ -118,7 +118,7 @@ export function SkillsClient({ userId }: { userId: string }) {
       <main className="wrap" style={{ padding: "1.5rem 1.25rem 4rem" }}>
         <h1 className="mono" style={{ margin: "0 0 .4rem", fontSize: "1.5rem" }}>Skills</h1>
         <p className="muted" style={{ margin: "0 0 1rem" }}>
-          Skills improve through the activities that use them. Gathering trains resource skills, while workshop recipes train production skills.
+          Skills improve through the activities that use them. Training builds combat skills, gathering trains resource skills, and workshop recipes train production skills.
         </p>
 
         {error && (
