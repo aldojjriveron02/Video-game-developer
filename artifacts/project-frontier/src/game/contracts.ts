@@ -134,6 +134,9 @@ export type CombatEnemyView = {
   encounterId: string;
   name: string;
   description: string;
+  regionId: string;
+  regionName: string;
+  requiredCombatRating: number;
   maxHp: number;
   attack: number;
   defense: number;
