@@ -93,3 +93,16 @@ export type CraftingResponse = {
   inventory: { itemId: string; quantity: number }[];
   recipes: CraftingRecipeView[];
 };
+
+
+export type CombatDrillView = ActivityDefinitionView & {
+  skillId: string;
+};
+
+export type CombatResponse = {
+  serverTime: string;
+  player: Dashboard["player"];
+  activeActivity: ActivityView | null;
+  activeActivityName: string | null;
+  drills: CombatDrillView[];
+};
