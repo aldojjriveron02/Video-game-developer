@@ -125,11 +125,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   const load = useCallback(async () => {
     const mine = ++seq.current;
     try {
-      const [dashboardData, questData, combatData] = await Promise.all([
-        api<Dashboard>("/dashboard"),
-        api<QuestsResponse>("/quests"),
-        api<CombatResponse>("/combat"),
-      ]);
+      const dashboardData = await api<Dashboard>("/dashboard");
       if (!alive.current || mine !== seq.current) return;
 
       offset.current = Date.parse(dashboardData.serverTime) - Date.now();
@@ -149,9 +145,16 @@ export function DashboardClient({ userId }: { userId: string }) {
       );
 
       setData(dashboardData);
-      setQuests(questData);
-      setCombat(combatData);
       setLoadError(null);
+
+      const [questResult, combatResult] = await Promise.allSettled([
+        api<QuestsResponse>("/quests"),
+        api<CombatResponse>("/combat"),
+      ]);
+      if (!alive.current || mine !== seq.current) return;
+
+      setQuests(questResult.status === "fulfilled" ? questResult.value : null);
+      setCombat(combatResult.status === "fulfilled" ? combatResult.value : null);
     } catch (error) {
       if (!alive.current || mine !== seq.current) return;
       setLoadError(error instanceof Error ? error.message : "Could not reach the station.");
