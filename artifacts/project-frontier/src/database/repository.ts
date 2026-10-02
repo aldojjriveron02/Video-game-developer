@@ -11,6 +11,8 @@ import type { InventoryState } from "../game/equipment";
 import { getActivityDefinition } from "../content/activities";
 import { getActivityDurationPreset, inputsForDuration, rewardForDuration } from "../content/gathering";
 import { getItemDefinition } from "../content/items";
+import { getEnemyForEncounter } from "../content/encounters";
+import { resolveCombat } from "../game/combat";
 import type {
   ActivityRecord,
   ClaimedActivity,
@@ -276,8 +278,26 @@ export class PostgresGameRepository implements GameRepositoryContract {
       if (!definition || !duration) {
         throw new GameError("invalid_request", "The requested activity is not available.");
       }
-      const reward = rewardForDuration(definition.reward, durationId);
+      let reward = rewardForDuration(definition.reward, durationId);
       const inputs = inputsForDuration(definition.inputs, durationId);
+      const enemy = getEnemyForEncounter(definition.id);
+      if (enemy) {
+        const skillRows = rowsFrom(
+          await transaction.execute(sql`
+            SELECT skill_id, xp
+            FROM player_skills
+            WHERE player_id = ${playerId}::uuid
+          `),
+        );
+        const combat = resolveCombat(
+          enemy,
+          skillRows.map((row) => ({ skillId: String(row.skill_id), xp: Number(row.xp) })),
+          `${playerId}:${command.requestId}:${definition.id}`,
+        );
+        reward = combat.result === "victory"
+          ? { ...definition.reward, combat }
+          : { gold: 0, xp: 2, itemId: definition.reward.itemId, quantity: 0, combat };
+      }
 
       for (const input of inputs) {
         const inventoryRow = rowsFrom(
@@ -479,12 +499,14 @@ export class PostgresGameRepository implements GameRepositoryContract {
         SET gold = gold + ${reward.gold}, xp = xp + ${reward.xp}
         WHERE id = ${playerId}::uuid
       `);
-      await transaction.execute(sql`
-        INSERT INTO inventory (player_id, item_id, quantity)
-        VALUES (${playerId}::uuid, ${reward.itemId}, ${reward.quantity})
-        ON CONFLICT (player_id, item_id)
-        DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity
-      `);
+      if (reward.quantity > 0) {
+        await transaction.execute(sql`
+          INSERT INTO inventory (player_id, item_id, quantity)
+          VALUES (${playerId}::uuid, ${reward.itemId}, ${reward.quantity})
+          ON CONFLICT (player_id, item_id)
+          DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity
+        `);
+      }
 
       let skillLevelsGained = 0;
       let skillProgression: ClaimedActivity["skillProgression"] = null;
