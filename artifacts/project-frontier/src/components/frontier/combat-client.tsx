@@ -31,6 +31,13 @@ function pretty(id: string) {
   return id.replaceAll("-", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function bonusText(bonuses: object) {
+  const parts = Object.entries(bonuses)
+    .filter(([, value]) => typeof value === "number" && value > 0)
+    .map(([key, value]) => `+${value} ${pretty(key)}`);
+  return parts.length > 0 ? parts.join(" · ") : "No gear bonuses";
+}
+
 function rewardText(reward: Reward) {
   const parts = [`+${reward.xp.toLocaleString()} character XP`];
   if (reward.gold > 0) parts.push(`+${reward.gold.toLocaleString()} gold`);
@@ -77,6 +84,9 @@ function BattleReport({ battle }: { battle: CombatResolutionView }) {
       </div>
       <p className="mono muted" style={{ fontSize: ".78rem", margin: ".75rem 0 .25rem" }}>
         Combat rating {battle.combatRating} · {battle.rounds.length} rounds
+      </p>
+      <p className="mono muted" style={{ fontSize: ".75rem", margin: "0 0 .5rem" }}>
+        Equipped bonuses: {bonusText(battle.gearBonuses)}
       </p>
       <div style={{ maxHeight: 260, overflow: "auto" }}>
         {battle.rounds.map((round) => (
@@ -150,7 +160,7 @@ export function CombatClient({ userId }: { userId: string }) {
     ?? null;
 
   const active = data?.activeActivity ?? null;
-  const activeIsBattle = !!active?.reward.combat;
+  const activeIsBattle = !!active && active.definitionId.startsWith("fight-");
   const serverNow = now + offset.current;
   const remaining = active ? Date.parse(active.finishesAt) - serverNow : 0;
   const total = active ? Date.parse(active.finishesAt) - Date.parse(active.startedAt) : 1;
@@ -229,9 +239,12 @@ export function CombatClient({ userId }: { userId: string }) {
         const battle = result.activity.reward.combat ?? null;
         setLastBattle(battle);
         if (battle) {
+          const gearDrop = result.activity.reward.equipmentDropId
+            ? ` Gear drop: ${pretty(result.activity.reward.equipmentDropId)}.`
+            : "";
           setNotice(
             battle.result === "victory"
-              ? `Victory over ${battle.enemyName}. ${rewardText(result.activity.reward)}.`
+              ? `Victory over ${battle.enemyName}. ${rewardText(result.activity.reward)}.${gearDrop}`
               : `Defeat against ${battle.enemyName}. You earned ${result.activity.reward.xp} character XP from the attempt.`,
           );
         } else {
@@ -286,6 +299,8 @@ export function CombatClient({ userId }: { userId: string }) {
           <div className="grid">
             <p className="mono muted" style={{ margin: 0, fontSize: ".85rem" }}>
               {data.player.displayName} · {data.player.gold.toLocaleString()} gold · Combat rating {data.combatRating}
+              <br />
+              Equipped bonuses: {bonusText(data.gearBonuses)}
             </p>
 
             {active && (
@@ -344,6 +359,14 @@ export function CombatClient({ userId }: { userId: string }) {
                         <span>Victory loot</span>
                         <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>{rewardText(enemy.reward)}</strong>
                       </div>
+                      {enemy.equipmentDrop && (
+                        <div className="row">
+                          <span>Gear chance</span>
+                          <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>
+                            {Math.round(enemy.equipmentDrop.chance * 100)}% · {pretty(enemy.equipmentDrop.itemId)}
+                          </strong>
+                        </div>
+                      )}
                       <button
                         className="btn"
                         style={{ width: "100%", marginTop: ".75rem" }}
