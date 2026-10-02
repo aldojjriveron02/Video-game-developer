@@ -1,19 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { Backpack, Shield, Shirt, Sword } from "lucide-react";
 import type { InventoryView } from "@/game/equipment";
 import type { EquipmentSlot } from "@/content/items";
-import { Brand } from "./brand";
 import { PlayerNav } from "./player-nav";
+import { GameHeader, ItemGlyph, ScreenHeading } from "./frontier-ui";
 
-class ApiFail extends Error { constructor(m: string, public status: number) { super(m); } }
+class ApiFail extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+  }
+}
 
 async function api(path: string, init?: RequestInit): Promise<InventoryView> {
-  const res = await fetch(`/frontier-api${path}`, { credentials: "include", cache: "no-store", ...init });
-  const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiFail((body && body.error) || `Request failed (${res.status})`, res.status);
+  const response = await fetch(`/frontier-api${path}`, {
+    credentials: "include",
+    cache: "no-store",
+    ...init,
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new ApiFail((body && body.error) || `Request failed (${response.status})`, response.status);
   if (!body || !Array.isArray(body.equipment) || !Array.isArray(body.resources) || !Array.isArray(body.slots)) {
     throw new ApiFail("The station returned an invalid inventory response.", 502);
   }
@@ -26,7 +34,13 @@ function bonusText(bonuses: object) {
   const parts = Object.entries(bonuses)
     .filter(([, value]) => typeof value === "number" && value > 0)
     .map(([key, value]) => `+${value} ${key.charAt(0).toUpperCase() + key.slice(1)}`);
-  return parts.length > 0 ? parts.join(" · ") : "No combat bonuses";
+  return parts.length ? parts.join(" · ") : "No combat bonuses";
+}
+
+function slotIcon(slot: EquipmentSlot) {
+  if (slot === "hand") return <Sword size={22} />;
+  if (slot === "body") return <Shirt size={22} />;
+  return <Shield size={22} />;
 }
 
 export function InventoryClient({ userId }: { userId: string }) {
@@ -35,198 +49,266 @@ export function InventoryClient({ userId }: { userId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  const [view, setView] = useState<"equipment" | "inventory">("equipment");
+  const [selectedGearId, setSelectedGearId] = useState<string | null>(null);
   const alive = useRef(true);
   const seq = useRef(0);
 
-  const fail = useCallback((e: unknown) => {
-    if (e instanceof ApiFail && e.status === 401) { setData(null); router.replace("/sign-in"); return null; }
-    return e instanceof Error ? e.message : "Could not reach the station.";
+  const fail = useCallback((error: unknown) => {
+    if (error instanceof ApiFail && error.status === 401) {
+      setData(null);
+      router.replace("/sign-in");
+      return null;
+    }
+    return error instanceof Error ? error.message : "Could not reach the station.";
   }, [router]);
 
   const load = useCallback(async () => {
     const mine = ++seq.current;
     try {
-      const d = await api("/inventory");
+      const next = await api("/inventory");
       if (!alive.current || mine !== seq.current) return;
-      setData(d); setLoadError(null);
-    } catch (e) {
+      setData(next);
+      setSelectedGearId((current) => current ?? next.equipment[0]?.id ?? null);
+      setLoadError(null);
+    } catch (error) {
       if (!alive.current || mine !== seq.current) return;
-      const m = fail(e);
-      if (m) setLoadError(m);
+      const message = fail(error);
+      if (message) setLoadError(message);
     }
   }, [fail]);
 
   useEffect(() => {
     alive.current = true;
-    setData(null); setNotice(null); setOpen(null); setLoadError(null);
+    setData(null);
+    setNotice(null);
+    setSelectedGearId(null);
+    setLoadError(null);
     load();
     return () => { alive.current = false; };
   }, [load, userId]);
 
-  async function write(key: string, path: string, init: RequestInit, okText: string, failText: string) {
-    setBusy(key); setNotice(null);
+  async function write(key: string, path: string, init: RequestInit, success: string, failure: string) {
+    setBusy(key);
+    setNotice(null);
     ++seq.current;
     try {
-      const d = await api(path, init);
+      const next = await api(path, init);
       if (!alive.current) return;
       ++seq.current;
-      setData(d); setLoadError(null);
-      setNotice({ ok: true, text: okText });
-    } catch (e) {
+      setData(next);
+      setLoadError(null);
+      setNotice({ ok: true, text: success });
+    } catch (error) {
       if (!alive.current) return;
-      const m = fail(e);
-      if (m) { setNotice({ ok: false, text: `${failText} ${m}` }); load(); }
-    } finally { if (alive.current) setBusy(null); }
+      const message = fail(error);
+      if (message) {
+        setNotice({ ok: false, text: `${failure} ${message}` });
+        load();
+      }
+    } finally {
+      if (alive.current) setBusy(null);
+    }
   }
 
   const equip = (id: string, name: string, slot: EquipmentSlot, label: string) =>
-    write(`eq-${id}`, `/equipment/${slot}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instanceId: id }),
-    }, `${name} equipped to ${label}. Saved.`, `${name}'s equipment change could not be confirmed.`);
+    write(
+      `eq-${id}`,
+      `/equipment/${slot}`,
+      { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instanceId: id }) },
+      `${name} equipped to ${label}.`,
+      `${name}'s equipment change could not be confirmed.`,
+    );
+
   const unequip = (slot: EquipmentSlot, label: string, name: string) =>
-    write(`un-${slot}`, `/equipment/${slot}`, { method: "DELETE" },
-      `${name} removed from ${label}. Saved.`, `${name}'s equipment change could not be confirmed.`);
+    write(
+      `un-${slot}`,
+      `/equipment/${slot}`,
+      { method: "DELETE" },
+      `${name} removed from ${label}.`,
+      `${name}'s equipment change could not be confirmed.`,
+    );
 
   const locked = busy !== null;
+  const equipped = useMemo(() => {
+    if (!data) return new Map();
+    return new Map(data.equipment.filter((item) => item.equippedSlot).map((item) => [item.equippedSlot!, item]));
+  }, [data]);
+  const selectedGear = data?.equipment.find((item) => item.id === selectedGearId) ?? data?.equipment[0] ?? null;
 
   return (
     <>
-      <header className="bar">
-        <div className="wrap"><Brand /><UserButton /></div>
-      </header>
+      <GameHeader gold={data?.player.gold} />
       <PlayerNav current="inventory" />
-      <main className="wrap" style={{ padding: "1.5rem 1.25rem 4rem" }} aria-busy={!data && !loadError}>
-        <h1 className="mono" style={{ margin: "0 0 1rem", fontSize: "1.5rem" }}>Inventory &amp; Equipment</h1>
-        {data && <p className="mono muted" style={{ margin: "0 0 1rem", fontSize: ".85rem" }}>
-          {data.player.displayName} · {data.player.gold.toLocaleString()} gold · Level {data.progression.level}
-        </p>}
-        {loadError && (
-          <div className="alert" role="alert" style={{ marginBottom: "1rem" }}>
-            <span>{data ? "Showing last known state. " : ""}{loadError}</span>
-            <button className="btn ghost" onClick={load} disabled={locked}>Retry</button>
-          </div>
-        )}
-        {!data && !loadError && (
-          <div className="grid" role="status" aria-label="Loading inventory">
-            <div className="skel" style={{ height: 120 }} /><div className="skel" style={{ height: 90 }} /><div className="skel" style={{ height: 160 }} />
-          </div>
-        )}
-        {!data && loadError && <p className="empty">Inventory unavailable.</p>}
-        <div aria-live="polite">
-          {notice && (
-            <div className={notice.ok ? "reward-notice" : "alert"} role={notice.ok ? "status" : "alert"} style={{ marginBottom: "1rem" }}>
-              <span><strong>{notice.ok ? "Saved" : "Save not confirmed"}:</strong> {notice.text}</span>
-              <button className="btn ghost sm" onClick={() => setNotice(null)}>Dismiss</button>
-            </div>
-          )}
-        </div>
-        {data && (() => {
-          const byId = new Map(data.equipment.map((e) => [e.id, e]));
-          return (
-            <div className="grid">
-              <p className="muted" style={{ margin: 0, fontSize: ".85rem" }}>
-                Equipped gear now changes combat stats. Gathering speed and resource rewards are still unchanged.
-              </p>
 
-              <section className="panel" aria-labelledby="slots">
-                <h2 id="slots">Equipment slots</h2>
-                <div className="slot-grid">
-                  {data.slots.map((s) => {
-                    const eq = s.equipmentId ? byId.get(s.equipmentId) : undefined;
+      <main className="wrap game-screen" aria-busy={!data && !loadError}>
+        <ScreenHeading
+          eyebrow="Loadout & supplies"
+          title="Inventory"
+          description="Equip your operator and inspect the materials collected across the frontier."
+          metric={data && <><span>Level</span><strong>{data.progression.level}</strong></>}
+        />
+
+        <div className="screen-tabs">
+          <button className={view === "equipment" ? "screen-tab active" : "screen-tab"} onClick={() => setView("equipment")}>
+            <Shield size={18} /> Equipment
+          </button>
+          <button className={view === "inventory" ? "screen-tab active" : "screen-tab"} onClick={() => setView("inventory")}>
+            <Backpack size={18} /> Inventory
+          </button>
+        </div>
+
+        {loadError && <div className="alert" role="alert"><span>{data ? "Showing last known state. " : ""}{loadError}</span><button className="btn ghost sm" onClick={load} disabled={locked}>Retry</button></div>}
+        {notice && <div className={notice.ok ? "reward-notice" : "alert"} role={notice.ok ? "status" : "alert"}><span>{notice.text}</span><button className="btn ghost sm" onClick={() => setNotice(null)}>Dismiss</button></div>}
+        {!data && !loadError && <div className="grid"><div className="skel" style={{ height: 390 }} /><div className="skel" style={{ height: 260 }} /></div>}
+
+        {data && view === "equipment" && (
+          <div className="game-screen-stack">
+            <section className="equipment-stage game-card">
+              <div className="section-banner">
+                <Shield size={20} />
+                <span>Operator Loadout</span>
+                <small>3 equipment slots</small>
+              </div>
+
+              <div className="equipment-stage-body">
+                <div className="equipment-slots-column left">
+                  {data.slots.filter((slot) => slot.slot === "head" || slot.slot === "body").map((slot) => {
+                    const item = equipped.get(slot.slot);
                     return (
-                      <div key={s.slot} className={`slot${eq ? " filled" : ""}`}>
-                        <span className="label" style={{ margin: 0 }}>{s.label} slot</span>
-                        <span className="slot-name">{eq ? eq.item.name : "Empty"}</span>
-                        {eq && (
-                          <button className="btn ghost sm" disabled={locked}
-                            aria-label={`Unequip ${eq.item.name} from ${s.label}`}
-                            onClick={() => unequip(s.slot, s.label, eq.item.name)}>
-                            {busy === `un-${s.slot}` ? "Saving..." : "Unequip"}
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        key={slot.slot}
+                        className={item ? "equipment-slot-card filled" : "equipment-slot-card"}
+                        onClick={() => item && setSelectedGearId(item.id)}
+                      >
+                        <span className="slot-icon">{slotIcon(slot.slot)}</span>
+                        <span className="slot-copy"><small>{slot.label}</small><strong>{item?.item.name ?? "Empty"}</strong></span>
+                      </button>
                     );
                   })}
                 </div>
-              </section>
 
-              <section className="panel" aria-labelledby="gear">
-                <h2 id="gear">Owned gear · unique items</h2>
-                {data.equipment.length === 0 ? <p className="empty">No gear owned.</p> :
-                  data.equipment.map((e) => {
-                    const label = data.slots.find((s) => s.slot === e.item.slot)?.label ?? e.item.slot;
-                    const did = `gear-${e.id}`;
-                    const isOpen = open === did;
+                <div className="operator-paperdoll">
+                  <div className="operator-aura" />
+                  <div className="operator-head" />
+                  <div className="operator-body-shape" />
+                  <div className="operator-arm left" />
+                  <div className="operator-arm right" />
+                  <div className="operator-legs" />
+                  <div className="operator-nameplate">
+                    <strong>{data.player.displayName}</strong>
+                    <span>Level {data.progression.level}</span>
+                  </div>
+                </div>
+
+                <div className="equipment-slots-column right">
+                  {data.slots.filter((slot) => slot.slot === "hand").map((slot) => {
+                    const item = equipped.get(slot.slot);
                     return (
-                      <div className="item" key={e.id}>
-                        <div className="item-head">
-                          <div>
-                            <strong>{e.item.name}</strong>{" "}
-                            <span className="tag">{label}</span>{" "}
-                            <span className="tag">{e.item.rarity}</span>{" "}
-                            <span className="tag on">{bonusText(e.item.combatBonuses)}</span>{" "}
-                            {e.equippedSlot
-                              ? <span className="tag on">Equipped · {data.slots.find((s) => s.slot === e.equippedSlot)?.label}</span>
-                              : <span className="tag">Not equipped</span>}
-                          </div>
-                          <div className="item-actions">
-                            <button className="btn ghost sm" aria-expanded={isOpen} aria-controls={did}
-                              onClick={() => setOpen(isOpen ? null : did)}>{isOpen ? "Hide details" : "Inspect"}</button>
-                            {e.equippedSlot ? (
-                              <button className="btn ghost sm" disabled={locked}
-                                onClick={() => unequip(e.equippedSlot!, label, e.item.name)}>
-                                {busy === `un-${e.equippedSlot}` ? "Saving..." : "Unequip"}
-                              </button>
-                            ) : (
-                              <button className="btn sm" disabled={locked}
-                                aria-label={`Equip ${e.item.name} to ${label}`}
-                                onClick={() => equip(e.id, e.item.name, e.item.slot, label)}>
-                                {busy === `eq-${e.id}` ? "Saving..." : `Equip to ${label}`}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        {isOpen && (
-                          <div className="detail" id={did}>
-                            <p style={{ margin: 0 }}>{e.item.description}</p>
-                            <p className="mono" style={{ margin: ".4rem 0 0", fontSize: ".78rem" }}>
-                              Combat: {bonusText(e.item.combatBonuses)}
-                            </p>
-                            <p className="mono muted" style={{ margin: ".4rem 0 0", fontSize: ".75rem" }}>
-                              Fits: {label} only · Instance {e.id.slice(0, 8)} · Acquired {new Date(e.acquiredAt).toLocaleString()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        key={slot.slot}
+                        className={item ? "equipment-slot-card filled" : "equipment-slot-card"}
+                        onClick={() => item && setSelectedGearId(item.id)}
+                      >
+                        <span className="slot-icon">{slotIcon(slot.slot)}</span>
+                        <span className="slot-copy"><small>{slot.label}</small><strong>{item?.item.name ?? "Empty"}</strong></span>
+                      </button>
                     );
                   })}
-              </section>
+                  <div className="equipment-slot-card locked-slot">
+                    <span className="slot-icon">+</span>
+                    <span className="slot-copy"><small>Future slot</small><strong>Locked</strong></span>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-              <section className="panel" aria-labelledby="stacks">
-                <h2 id="stacks">Resources · stacks</h2>
-                {data.resources.length === 0 ? <p className="empty">No resources yet. Complete gathering and claim your first reward.</p> :
-                  data.resources.map((r) => {
-                    const did = `res-${r.item.id}`;
-                    const isOpen = open === did;
-                    return (
-                      <div className="item" key={r.item.id}>
-                        <div className="item-head">
-                          <div><strong>{r.item.name}</strong> <span className="tag">Stack</span></div>
-                          <div className="item-actions">
-                            <span className="mono" style={{ alignSelf: "center" }}>x {r.quantity.toLocaleString()}</span>
-                            <button className="btn ghost sm" aria-expanded={isOpen} aria-controls={did}
-                              onClick={() => setOpen(isOpen ? null : did)}>{isOpen ? "Hide details" : "Inspect"}</button>
-                          </div>
-                        </div>
-                        {isOpen && <div className="detail" id={did}><p style={{ margin: 0 }}>{r.item.description}</p></div>}
-                      </div>
-                    );
-                  })}
+            {selectedGear && (
+              <section className={`gear-inspect game-card rarity-${selectedGear.item.rarity}`}>
+                <div className="gear-inspect-icon"><ItemGlyph id={selectedGear.item.id} size={42} /></div>
+                <div className="gear-inspect-copy">
+                  <div className="eyebrow">{selectedGear.item.rarity} · {selectedGear.item.slot}</div>
+                  <h2>{selectedGear.item.name}</h2>
+                  <p>{selectedGear.item.description}</p>
+                  <div className="gear-bonuses">{bonusText(selectedGear.item.combatBonuses)}</div>
+                </div>
+                <div className="gear-inspect-actions">
+                  {selectedGear.equippedSlot ? (
+                    <button className="btn ghost" disabled={locked} onClick={() => unequip(selectedGear.equippedSlot!, selectedGear.item.slot, selectedGear.item.name)}>
+                      {busy === `un-${selectedGear.equippedSlot}` ? "Saving..." : "Unequip"}
+                    </button>
+                  ) : (
+                    <button className="btn gold-btn" disabled={locked} onClick={() => equip(selectedGear.id, selectedGear.item.name, selectedGear.item.slot, selectedGear.item.slot)}>
+                      {busy === `eq-${selectedGear.id}` ? "Saving..." : "Equip"}
+                    </button>
+                  )}
+                </div>
               </section>
-            </div>
-          );
-        })()}
+            )}
+
+            <section className="game-card">
+              <div className="section-banner">
+                <Sword size={20} />
+                <span>Owned Gear</span>
+                <small>{data.equipment.length} items</small>
+              </div>
+              {data.equipment.length === 0 ? (
+                <p className="empty padded-empty">No equipment owned.</p>
+              ) : (
+                <div className="gear-grid">
+                  {data.equipment.map((item) => (
+                    <button
+                      key={item.id}
+                      className={selectedGear?.id === item.id ? `gear-tile selected rarity-${item.item.rarity}` : `gear-tile rarity-${item.item.rarity}`}
+                      onClick={() => setSelectedGearId(item.id)}
+                    >
+                      <div className="gear-tile-icon"><ItemGlyph id={item.item.id} size={30} /></div>
+                      <strong>{item.item.name}</strong>
+                      <span>{item.equippedSlot ? "Equipped" : item.item.rarity}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {data && view === "inventory" && (
+          <div className="game-screen-stack">
+            <section className="game-card">
+              <div className="section-banner">
+                <Backpack size={20} />
+                <span>Resources</span>
+                <small>{data.resources.length} stacks</small>
+              </div>
+              {data.resources.length === 0 ? (
+                <p className="empty padded-empty">No resources yet. Complete gathering activities to fill your pack.</p>
+              ) : (
+                <div className="resource-grid">
+                  {data.resources.map((resource) => (
+                    <div className="resource-tile" key={resource.item.id}>
+                      <div className="resource-icon"><ItemGlyph id={resource.item.id} size={30} /></div>
+                      <div className="resource-tile-copy">
+                        <strong>{resource.item.name}</strong>
+                        <span>{resource.item.description}</span>
+                      </div>
+                      <b>{resource.quantity.toLocaleString()}</b>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="game-card inventory-tip">
+              <div className="section-banner">
+                <Shield size={20} />
+                <span>Loadout Tip</span>
+              </div>
+              <p>Equipment now changes combat stats. Materials are used by the Workshop and campaign quests.</p>
+              <button className="btn gold-btn" onClick={() => setView("equipment")}>View Equipment</button>
+            </section>
+          </div>
+        )}
       </main>
     </>
   );
