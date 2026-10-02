@@ -85,3 +85,70 @@ body {
   font: 500 .9rem "IBM Plex Mono", monospace;
 }
 .activity-select:disabled { opacity: .6; }
+
+
+/* world map */
+.world-map {
+  position: relative;
+  display: grid;
+  gap: 0;
+  padding: .25rem 0;
+}
+.world-node-wrap {
+  position: relative;
+  padding: 0 0 1.25rem 2.4rem;
+}
+.world-node-wrap:last-child { padding-bottom: 0; }
+.world-line {
+  position: absolute;
+  left: .8rem;
+  top: -1.25rem;
+  bottom: calc(100% - 1.8rem);
+  width: 2px;
+  background: var(--line);
+}
+.world-line.open { background: var(--ok); }
+.world-node {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1rem 1.1rem;
+  background: var(--panel);
+}
+.world-node::before {
+  content: "";
+  position: absolute;
+  left: -2rem;
+  top: 1.15rem;
+  width: .85rem;
+  height: .85rem;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--paper);
+}
+.world-node.open::before {
+  border-color: var(--ok);
+  background: var(--ok);
+}
+.world-node.locked {
+  opacity: .68;
+  background: #e2dbc7;
+}
+.world-node-head {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.world-enemy {
+  border: 1px dashed var(--line);
+  background: var(--paper);
+  padding: .65rem .75rem;
+  border-radius: 3px;
+}
+@media (max-width: 560px) {
+  .world-node-wrap { padding-left: 1.75rem; }
+  .world-line { left: .55rem; }
+  .world-node::before { left: -1.55rem; }
+}
