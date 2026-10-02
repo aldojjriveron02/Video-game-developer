@@ -10,6 +10,8 @@ import {
 import { getActivityDefinition } from "../content/activities";
 import { getCraftingDefinitions } from "../content/crafting";
 import { getCombatDefinitions } from "../content/combat";
+import { getEnemyDefinitions, getEnemyForEncounter } from "../content/encounters";
+import { combatRatingForSkills } from "./combat";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
@@ -194,6 +196,17 @@ export class GameService {
           inputs: [],
         })),
       })),
+      enemies: getEnemyDefinitions().map((enemy) => ({
+        id: enemy.id,
+        encounterId: enemy.encounterId,
+        name: enemy.name,
+        description: enemy.description,
+        maxHp: enemy.maxHp,
+        attack: enemy.attack,
+        defense: enemy.defense,
+        reward: { ...enemy.reward },
+      })),
+      combatRating: combatRatingForSkills(dashboard.skillXp),
     };
   }
 
@@ -203,6 +216,9 @@ export class GameService {
     const duration = getActivityDurationPreset(command.durationId);
     if (!definition || !duration) {
       throw new GameError("invalid_request", "The requested activity is not available.");
+    }
+    if (getEnemyForEncounter(command.definitionId) && command.durationId !== "1m") {
+      throw new GameError("invalid_request", "Combat encounters use a fixed one-minute resolution.");
     }
     return this.repository.startActivity(playerId, command);
   }
