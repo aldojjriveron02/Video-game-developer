@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const startActivityCommandSchema = z
   .object({
-    definitionId: z.literal("gather-wood"),
+    definitionId: z.string().min(1).max(64).regex(/^[a-z0-9-]+$/),
     requestId: z.string().uuid(),
   })
   .strict();

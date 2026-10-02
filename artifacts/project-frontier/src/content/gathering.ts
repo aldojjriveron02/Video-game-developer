@@ -1,5 +1,6 @@
 import type { Reward } from "../game/contracts";
 import { getSkillDefinition } from "./skills";
+import { getItemDefinition } from "./items";
 
 export type ActivityDefinition = {
   id: string;
@@ -16,19 +17,53 @@ const gatheringDefinitions = [
     name: "Gather wood",
     description: "Collect sturdy wood from the nearby forest.",
     durationSeconds: 30,
-    reward: {
-      gold: 12,
-      xp: 8,
-      itemId: "wood",
-      quantity: 3,
-      skillId: "woodcutting",
-      skillXp: 8,
-    },
+    reward: { gold: 12, xp: 8, itemId: "wood", quantity: 3, skillId: "woodcutting", skillXp: 8 },
+    version: 1,
+  },
+  {
+    id: "mine-stone",
+    name: "Mine stone",
+    description: "Break usable stone from shallow frontier deposits.",
+    durationSeconds: 30,
+    reward: { gold: 12, xp: 8, itemId: "stone", quantity: 3, skillId: "mining", skillXp: 8 },
+    version: 1,
+  },
+  {
+    id: "fish-river",
+    name: "Fish the river",
+    description: "Work the nearby water for fresh river fish.",
+    durationSeconds: 30,
+    reward: { gold: 12, xp: 8, itemId: "river-fish", quantity: 2, skillId: "fishing", skillXp: 8 },
+    version: 1,
+  },
+  {
+    id: "hunt-small-game",
+    name: "Hunt small game",
+    description: "Track nearby wildlife for hides and useful materials.",
+    durationSeconds: 30,
+    reward: { gold: 12, xp: 8, itemId: "hide", quantity: 2, skillId: "hunting", skillXp: 8 },
+    version: 1,
+  },
+  {
+    id: "gather-herbs",
+    name: "Gather herbs",
+    description: "Collect common medicinal plants from the frontier.",
+    durationSeconds: 30,
+    reward: { gold: 12, xp: 8, itemId: "medicinal-herb", quantity: 3, skillId: "herbalism", skillXp: 8 },
+    version: 1,
+  },
+  {
+    id: "forage-berries",
+    name: "Forage berries",
+    description: "Search the nearby wilds for edible berries and supplies.",
+    durationSeconds: 30,
+    reward: { gold: 12, xp: 8, itemId: "wild-berries", quantity: 3, skillId: "foraging", skillXp: 8 },
     version: 1,
   },
 ] satisfies ActivityDefinition[];
 
 function validateDefinition(definition: ActivityDefinition): ActivityDefinition {
+  const item = getItemDefinition(definition.reward.itemId);
   if (
     !definition.id ||
     !definition.name ||
@@ -38,6 +73,8 @@ function validateDefinition(definition: ActivityDefinition): ActivityDefinition 
     !Number.isInteger(definition.version) ||
     definition.version <= 0 ||
     !definition.reward.itemId ||
+    !item ||
+    item.kind !== "resource" ||
     !Number.isInteger(definition.reward.gold) ||
     definition.reward.gold < 0 ||
     !Number.isInteger(definition.reward.xp) ||
@@ -63,6 +100,10 @@ export const activityDefinitions = new Map(
 
 export function getActivityDefinition(id: string): ActivityDefinition | undefined {
   return activityDefinitions.get(id);
+}
+
+export function getGatheringDefinitions(): readonly ActivityDefinition[] {
+  return [...activityDefinitions.values()];
 }
 
 export function getGatheringDefinition(): ActivityDefinition {

@@ -20,6 +20,13 @@ export type ActivityView = {
   startedAt: string; finishesAt: string; claimedAt: string | null; cancelledAt: string | null;
   reward: Reward;
 };
+export type ActivityDefinitionView = {
+  id: string;
+  name: string;
+  description: string;
+  durationSeconds: number;
+  reward: Reward;
+};
 export type ActivityResponse = { activity: ActivityView };
 export type ClaimResponse = {
   activity: ActivityView;
@@ -39,7 +46,8 @@ export type Dashboard = {
   recentActivities: ActivityView[];
   inventory: { itemId: string; quantity: number }[];
   ledger: { id: string; activityId: string; kind: string; reward: Reward; createdAt: string }[];
-  gathering: { id: string; name: string; description: string; durationSeconds: number; reward: Reward };
+  gathering: ActivityDefinitionView;
+  gatheringActivities: ActivityDefinitionView[];
 };
 export type SkillsResponse = {
   player: Dashboard["player"];

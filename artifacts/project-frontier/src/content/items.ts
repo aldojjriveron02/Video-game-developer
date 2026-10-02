@@ -15,7 +15,12 @@ export type EquipmentDefinition = {
 export type ItemDefinition = ResourceDefinition | EquipmentDefinition;
 
 const definitions: readonly ItemDefinition[] = [
-  { id: "wood", name: "Wood", kind: "resource", description: "Timber collected at the field station. Stored as a persistent resource stack." },
+  { id: "wood", name: "Wood", kind: "resource", description: "Timber collected from the nearby forest." },
+  { id: "stone", name: "Stone", kind: "resource", description: "Usable stone broken from shallow frontier deposits." },
+  { id: "river-fish", name: "River Fish", kind: "resource", description: "Fresh fish caught from regional waters." },
+  { id: "hide", name: "Hide", kind: "resource", description: "A basic animal hide gathered while hunting." },
+  { id: "medicinal-herb", name: "Medicinal Herb", kind: "resource", description: "A common plant used by future alchemy and medicine systems." },
+  { id: "wild-berries", name: "Wild Berries", kind: "resource", description: "Edible berries gathered while foraging." },
   { id: "field-axe", name: "Field Axe", kind: "equipment", slot: "hand", rarity: "common",
     description: "A basic station-issued axe. Starter hand equipment; it does not change gathering rewards or speed." },
   { id: "work-vest", name: "Work Vest", kind: "equipment", slot: "body", rarity: "common",

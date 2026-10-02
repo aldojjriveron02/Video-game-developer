@@ -19,7 +19,9 @@ describe("equipment commands and item definitions", () => {
     expect(() => parseEquipCommand(input)).toThrow("valid equipment instance");
   });
   it("defines separate resources and compatible starter gear", () => {
-    expect(getItemDefinition("wood")?.kind).toBe("resource");
+    for (const id of ["wood", "stone", "river-fish", "hide", "medicinal-herb", "wild-berries"]) {
+      expect(getItemDefinition(id)?.kind).toBe("resource");
+    }
     expect(new Set(STARTER_EQUIPMENT).size).toBe(2);
     for (const id of STARTER_EQUIPMENT) {
       const definition = getItemDefinition(id);

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import type { ActivityResponse, ClaimResponse, Dashboard, Reward } from "@/game/contracts";
+import type { ActivityDefinitionView, ActivityResponse, ClaimResponse, Dashboard, Reward } from "@/game/contracts";
 import { Brand } from "./brand";
 import Link from "next/link";
 import { PlayerNav } from "./player-nav";
@@ -41,6 +41,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [claimNotice, setClaimNotice] = useState<ClaimResponse | null>(null);
   const [activityNotice, setActivityNotice] = useState<string | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState("gather-wood");
   const [busy, setBusy] = useState<null | "start" | "claim" | "cancel">(null);
   const [now, setNow] = useState(() => Date.now());
   const offset = useRef(0);
@@ -56,6 +57,11 @@ export function DashboardClient({ userId }: { userId: string }) {
       if (!alive.current || mine !== seq.current) return;
       offset.current = Date.parse(d.serverTime) - Date.now();
       if (d.activeActivity) requestId.current = null;
+      setSelectedActivityId((current) =>
+        d.gatheringActivities.some((activity) => activity.id === current)
+          ? current
+          : (d.gatheringActivities[0]?.id ?? d.gathering.id),
+      );
       setData(d);
       setLoadError(null);
     } catch (e) {
@@ -88,6 +94,12 @@ export function DashboardClient({ userId }: { userId: string }) {
   }, [load, userId]);
 
   const active = data?.activeActivity ?? null;
+  const selectedActivity: ActivityDefinitionView | null = data
+    ? data.gatheringActivities.find((activity) => activity.id === selectedActivityId) ?? data.gathering
+    : null;
+  const activeDefinition: ActivityDefinitionView | null = active && data
+    ? data.gatheringActivities.find((activity) => activity.id === active.definitionId) ?? selectedActivity
+    : selectedActivity;
   const serverNow = now + offset.current;
   const remainingMs = active ? Date.parse(active.finishesAt) - serverNow : 0;
   const total = active ? Date.parse(active.finishesAt) - Date.parse(active.startedAt) : 1;
@@ -100,7 +112,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   }, [ready, active, load]);
 
   async function start() {
-    if (!data) return;
+    if (!data || !selectedActivity) return;
     setClaimNotice(null);
     setActivityNotice(null);
     setBusy("start"); setActionError(null);
@@ -109,7 +121,7 @@ export function DashboardClient({ userId }: { userId: string }) {
       await api<ActivityResponse>("/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ definitionId: "gather-wood", requestId: requestId.current }),
+        body: JSON.stringify({ definitionId: selectedActivity.id, requestId: requestId.current }),
       });
       requestId.current = null;
       polls.current = 0;
@@ -220,22 +232,41 @@ export function DashboardClient({ userId }: { userId: string }) {
             )}
 
             <section className="panel" aria-labelledby="job">
-              <h2 id="job">Assignment</h2>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
-                <div>
-                  <div className="mono" style={{ fontWeight: 600 }}>{data.gathering.name}</div>
-                  <p className="muted" style={{ margin: ".25rem 0" }}>{data.gathering.description}</p>
-                  <p className="mono muted" style={{ margin: 0, fontSize: ".8rem" }}>
-                    {data.gathering.durationSeconds}s &middot; {rewardText(data.gathering.reward)}
-                  </p>
+              <h2 id="job">Gathering assignment</h2>
+              {!active && selectedActivity && (
+                <div className="grid" style={{ gap: ".75rem" }}>
+                  <label>
+                    <span className="label" style={{ display: "block", marginBottom: ".35rem" }}>Choose activity</span>
+                    <select
+                      className="activity-select"
+                      value={selectedActivityId}
+                      onChange={(event) => {
+                        setSelectedActivityId(event.target.value);
+                        setActionError(null);
+                        requestId.current = null;
+                      }}
+                      disabled={busy !== null}
+                    >
+                      {data.gatheringActivities.map((activity) => (
+                        <option value={activity.id} key={activity.id}>{activity.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <div>
+                      <div className="mono" style={{ fontWeight: 600 }}>{selectedActivity.name}</div>
+                      <p className="muted" style={{ margin: ".25rem 0" }}>{selectedActivity.description}</p>
+                      <p className="mono muted" style={{ margin: 0, fontSize: ".8rem" }}>
+                        {selectedActivity.durationSeconds}s &middot; {rewardText(selectedActivity.reward)}
+                      </p>
+                    </div>
+                    <button className="btn" onClick={start} disabled={busy !== null}>
+                      {busy === "start" ? "Starting..." : actionError && requestId.current ? "Retry start" : "Start activity"}
+                    </button>
+                  </div>
                 </div>
-                {!active && (
-                  <button className="btn" onClick={start} disabled={busy !== null}>
-                    {busy === "start" ? "Starting..." : actionError && requestId.current ? "Retry start" : "Start gathering"}
-                  </button>
-                )}
-              </div>
-              {active && (
+              )}
+              {active && activeDefinition && (
                 <div style={{ marginTop: "1rem" }}>
                   <div className="bartrack" role="progressbar" aria-label="Gathering progress"
                     aria-valuemin={0} aria-valuemax={100}
@@ -244,6 +275,7 @@ export function DashboardClient({ userId }: { userId: string }) {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: ".75rem", gap: "1rem", flexWrap: "wrap" }}>
                     <span className="mono" aria-live="off">
+                      <strong>{activeDefinition.name}</strong>{" · "}
                       {ready ? "Ready to claim" : `${fmtTime(remainingMs / 1000)} remaining`}
                     </span>
                     <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
@@ -256,7 +288,7 @@ export function DashboardClient({ userId }: { userId: string }) {
                     </div>
                   </div>
                   <p className="muted" style={{ fontSize: ".78rem", margin: ".5rem 0 0" }}>
-                    Timer is a display only. The server decides when a claim is accepted.
+                    {rewardText(active.reward)}. Timer is display-only; the server decides when a claim is accepted.
                   </p>
                 </div>
               )}

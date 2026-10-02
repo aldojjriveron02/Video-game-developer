@@ -179,6 +179,32 @@ describe("PostgreSQL game repository", () => {
     expect(dashboard.ledger).toHaveLength(1);
   });
 
+  it("routes each gathering activity into its own resource stack and skill XP", async () => {
+    const player = await createPlayer();
+    const activity = await repository.startActivity(player.id, {
+      definitionId: "mine-stone",
+      requestId: randomUUID(),
+    });
+    expect(activity.reward).toMatchObject({
+      itemId: "stone",
+      quantity: 3,
+      skillId: "mining",
+      skillXp: 8,
+    });
+
+    await markActivityReady(activity.id);
+    const claim = await repository.claimActivity(player.id, activity.id);
+    expect(claim.rewardGranted).toBe(true);
+    expect(claim.skillProgression).toMatchObject({
+      skillId: "mining",
+      progression: { totalXp: 8, level: 1 },
+    });
+
+    const dashboard = await repository.getDashboard(player.id);
+    expect(dashboard.inventory).toContainEqual({ itemId: "stone", quantity: 3 });
+    expect(dashboard.skillXp).toContainEqual({ skillId: "mining", xp: 8 });
+  });
+
   it("advances levels once and preserves resources/progression after re-resolving the same identity", async () => {
     const clerkId = `integration:${randomUUID()}`;
     const player = await repository.resolveClerkIdentity(clerkId, "Progression Explorer");

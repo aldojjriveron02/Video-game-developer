@@ -250,7 +250,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
       if (active) {
         throw new GameError(
           "activity_already_active",
-          "Claim the current activity before starting another.",
+          "Claim or cancel the current activity before starting another.",
         );
       }
 

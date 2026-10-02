@@ -1,5 +1,5 @@
 import type { Dashboard, Reward, SkillsResponse } from "./contracts";
-import { getActivityDefinition, getGatheringDefinition } from "../content/gathering";
+import { getActivityDefinition, getGatheringDefinition, getGatheringDefinitions } from "../content/gathering";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
@@ -44,7 +44,7 @@ export type ClaimedActivity = {
   skillProgression: { skillId: string; progression: Progression } | null;
 };
 
-export type RepositoryDashboard = Omit<Dashboard, "gathering" | "progression" | "skills"> & {
+export type RepositoryDashboard = Omit<Dashboard, "gathering" | "gatheringActivities" | "progression" | "skills"> & {
   skillXp: { skillId: string; xp: number }[];
 };
 
@@ -77,6 +77,7 @@ export class GameService {
   async dashboardForPlayer(playerId: string): Promise<Dashboard> {
     const dashboard = await this.repository.getDashboard(playerId);
     const definition = getGatheringDefinition();
+    const definitions = getGatheringDefinitions();
     const xpBySkill = new Map(dashboard.skillXp.map((entry) => [entry.skillId, entry.xp]));
     const { skillXp: _skillXp, ...base } = dashboard;
     return {
@@ -93,6 +94,13 @@ export class GameService {
         durationSeconds: definition.durationSeconds,
         reward: { ...definition.reward },
       },
+      gatheringActivities: definitions.map((activity) => ({
+        id: activity.id,
+        name: activity.name,
+        description: activity.description,
+        durationSeconds: activity.durationSeconds,
+        reward: { ...activity.reward },
+      })),
     };
   }
 

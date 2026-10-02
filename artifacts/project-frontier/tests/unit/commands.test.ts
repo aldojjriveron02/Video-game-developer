@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { calculateFinishTime, startActivityCommandSchema } from "../../src/game/commands";
 
 describe("activity commands", () => {
-  it("accepts only the versioned activity and request UUID", () => {
-    expect(
-      startActivityCommandSchema.safeParse({
-        definitionId: "gather-wood",
-        requestId: "d1d49f18-7e74-42e0-a5ce-c6025a1eb0c8",
-      }).success,
-    ).toBe(true);
+  it("accepts a valid activity identifier and request UUID without trusting client timing", () => {
+    for (const definitionId of ["gather-wood", "mine-stone", "fish-river"]) {
+      expect(
+        startActivityCommandSchema.safeParse({
+          definitionId,
+          requestId: "d1d49f18-7e74-42e0-a5ce-c6025a1eb0c8",
+        }).success,
+      ).toBe(true);
+    }
     expect(
       startActivityCommandSchema.safeParse({
         definitionId: "gather-wood",
@@ -20,6 +22,12 @@ describe("activity commands", () => {
       startActivityCommandSchema.safeParse({
         definitionId: "gather-wood",
         requestId: "not-a-uuid",
+      }).success,
+    ).toBe(false);
+    expect(
+      startActivityCommandSchema.safeParse({
+        definitionId: "../../something",
+        requestId: "d1d49f18-7e74-42e0-a5ce-c6025a1eb0c8",
       }).success,
     ).toBe(false);
   });

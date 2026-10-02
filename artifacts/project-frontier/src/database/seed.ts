@@ -1,6 +1,6 @@
-import { getGatheringDefinition } from "../content/gathering";
+import { getGatheringDefinitions } from "../content/gathering";
 
-const definition = getGatheringDefinition();
+const definitions = getGatheringDefinitions();
 console.info(
-  `Validated activity content ${definition.id} v${definition.version}; player state is provisioned only from authenticated Clerk identities.`,
+  `Validated ${definitions.length} activity definitions; player state is provisioned only from authenticated Clerk identities.`,
 );
