@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import type { ActivityResponse, ClaimResponse, CombatResponse, Reward } from "@/game/contracts";
+import type {
+  ActivityResponse,
+  ClaimResponse,
+  CombatResolutionView,
+  CombatResponse,
+  Reward,
+} from "@/game/contracts";
 import { Brand } from "./brand";
 import { PlayerNav } from "./player-nav";
 
@@ -26,10 +32,13 @@ function pretty(id: string) {
 }
 
 function rewardText(reward: Reward) {
-  const skill = reward.skillId && reward.skillXp
-    ? ` · +${reward.skillXp.toLocaleString()} ${pretty(reward.skillId)} XP`
-    : "";
-  return `+${reward.xp.toLocaleString()} character XP · +${reward.gold.toLocaleString()} gold · +${reward.quantity.toLocaleString()} ${pretty(reward.itemId)}${skill}`;
+  const parts = [`+${reward.xp.toLocaleString()} character XP`];
+  if (reward.gold > 0) parts.push(`+${reward.gold.toLocaleString()} gold`);
+  if (reward.quantity > 0) parts.push(`+${reward.quantity.toLocaleString()} ${pretty(reward.itemId)}`);
+  if (reward.skillId && reward.skillXp) {
+    parts.push(`+${reward.skillXp.toLocaleString()} ${pretty(reward.skillId)} XP`);
+  }
+  return parts.join(" · ");
 }
 
 function fmtTime(milliseconds: number) {
@@ -41,10 +50,55 @@ function fmtTime(milliseconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
 
+function BattleReport({ battle }: { battle: CombatResolutionView }) {
+  const won = battle.result === "victory";
+  return (
+    <section className="panel" aria-labelledby="battle-report">
+      <h2 id="battle-report">Battle report · {won ? "Victory" : "Defeat"}</h2>
+      <div className="grid two">
+        <div>
+          <div className="mono" style={{ fontWeight: 600 }}>Operator</div>
+          <p className="muted" style={{ margin: ".25rem 0 .5rem" }}>
+            HP {battle.playerHp} / {battle.playerMaxHp}
+          </p>
+          <div className="bartrack" aria-label="Player health">
+            <div className="barfill" style={{ transform: `scaleX(${battle.playerMaxHp > 0 ? battle.playerHp / battle.playerMaxHp : 0})` }} />
+          </div>
+        </div>
+        <div>
+          <div className="mono" style={{ fontWeight: 600 }}>{battle.enemyName}</div>
+          <p className="muted" style={{ margin: ".25rem 0 .5rem" }}>
+            HP {battle.enemyHp} / {battle.enemyMaxHp}
+          </p>
+          <div className="bartrack" aria-label="Enemy health">
+            <div className="barfill" style={{ transform: `scaleX(${battle.enemyMaxHp > 0 ? battle.enemyHp / battle.enemyMaxHp : 0})` }} />
+          </div>
+        </div>
+      </div>
+      <p className="mono muted" style={{ fontSize: ".78rem", margin: ".75rem 0 .25rem" }}>
+        Combat rating {battle.combatRating} · {battle.rounds.length} rounds
+      </p>
+      <div style={{ maxHeight: 260, overflow: "auto" }}>
+        {battle.rounds.map((round) => (
+          <div className="row" key={round.round}>
+            <span>Round {round.round}</span>
+            <span className="mono" style={{ textAlign: "right", fontSize: ".78rem" }}>
+              You dealt {round.playerDamage} · Took {round.enemyDamage}
+              <br />
+              <span className="muted">HP {round.playerHpAfter} · Enemy {round.enemyHpAfter}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function CombatClient({ userId }: { userId: string }) {
   const [data, setData] = useState<CombatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [lastBattle, setLastBattle] = useState<CombatResolutionView | null>(null);
   const [selectedDrillId, setSelectedDrillId] = useState("train-strength");
   const [selectedDurationId, setSelectedDurationId] = useState("1m");
   const [busy, setBusy] = useState<null | "start" | "claim" | "cancel">(null);
@@ -66,7 +120,7 @@ export function CombatClient({ userId }: { userId: string }) {
       if (next.activeActivity) requestId.current = null;
     } catch (err) {
       if (!alive.current) return;
-      setError(err instanceof Error ? err.message : "Could not load training grounds.");
+      setError(err instanceof Error ? err.message : "Could not load the combat station.");
     }
   }, []);
 
@@ -96,37 +150,51 @@ export function CombatClient({ userId }: { userId: string }) {
     ?? null;
 
   const active = data?.activeActivity ?? null;
+  const activeIsBattle = !!active?.reward.combat;
   const serverNow = now + offset.current;
   const remaining = active ? Date.parse(active.finishesAt) - serverNow : 0;
   const total = active ? Date.parse(active.finishesAt) - Date.parse(active.startedAt) : 1;
   const ready = !!active && remaining <= 0;
   const progress = active ? Math.min(1, Math.max(0, 1 - remaining / total)) : 0;
 
-  async function start() {
-    if (!drill || !duration) return;
+  async function startActivity(definitionId: string, durationId: string, success: string) {
     setBusy("start");
     setError(null);
     setNotice(null);
+    setLastBattle(null);
     requestId.current ??= crypto.randomUUID();
     try {
       await api<ActivityResponse>("/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          definitionId: drill.id,
-          durationId: duration.id,
-          requestId: requestId.current,
-        }),
+        body: JSON.stringify({ definitionId, durationId, requestId: requestId.current }),
       });
       requestId.current = null;
-      setNotice("Training started. The server is tracking the session while you are away.");
+      setNotice(success);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start training.");
+      setError(err instanceof Error ? err.message : "Could not start the activity.");
       await load();
     } finally {
       setBusy(null);
     }
+  }
+
+  async function startTraining() {
+    if (!drill || !duration) return;
+    await startActivity(
+      drill.id,
+      duration.id,
+      "Training started. The server is tracking the session while you are away.",
+    );
+  }
+
+  async function startBattle(encounterId: string, enemyName: string) {
+    await startActivity(
+      encounterId,
+      "1m",
+      `Encounter started against ${enemyName}. The server has locked in the combat simulation.`,
+    );
   }
 
   async function cancel() {
@@ -158,10 +226,20 @@ export function CombatClient({ userId }: { userId: string }) {
         { method: "POST" },
       );
       if (result.rewardGranted) {
-        const skillLevel = result.skillProgression
-          ? ` · ${pretty(result.skillProgression.skillId)} level ${result.skillProgression.progression.level}`
-          : "";
-        setNotice(`Session complete: ${rewardText(result.activity.reward)}${skillLevel}.`);
+        const battle = result.activity.reward.combat ?? null;
+        setLastBattle(battle);
+        if (battle) {
+          setNotice(
+            battle.result === "victory"
+              ? `Victory over ${battle.enemyName}. ${rewardText(result.activity.reward)}.`
+              : `Defeat against ${battle.enemyName}. You earned ${result.activity.reward.xp} character XP from the attempt.`,
+          );
+        } else {
+          const skillLevel = result.skillProgression
+            ? ` · ${pretty(result.skillProgression.skillId)} level ${result.skillProgression.progression.level}`
+            : "";
+          setNotice(`Training complete: ${rewardText(result.activity.reward)}${skillLevel}.`);
+        }
       }
       await load();
     } catch (err) {
@@ -179,9 +257,9 @@ export function CombatClient({ userId }: { userId: string }) {
       </header>
       <PlayerNav current="combat" />
       <main className="wrap" style={{ padding: "1.5rem 1.25rem 4rem" }}>
-        <h1 className="mono" style={{ margin: "0 0 .4rem", fontSize: "1.5rem" }}>Training Grounds</h1>
+        <h1 className="mono" style={{ margin: "0 0 .4rem", fontSize: "1.5rem" }}>Combat & Training</h1>
         <p className="muted" style={{ margin: "0 0 1rem" }}>
-          Train the six combat skills with server-timed sessions. Combat encounters will build on these stats.
+          Build six combat skills, then use them in server-resolved encounters for gold, XP and loot.
         </p>
 
         {error && (
@@ -198,31 +276,33 @@ export function CombatClient({ userId }: { userId: string }) {
         )}
 
         {!data && !error && (
-          <div className="grid" role="status" aria-label="Loading training grounds">
+          <div className="grid" role="status" aria-label="Loading combat station">
             <div className="skel" style={{ height: 180 }} />
-            <div className="skel" style={{ height: 130 }} />
+            <div className="skel" style={{ height: 160 }} />
           </div>
         )}
 
         {data && (
           <div className="grid">
             <p className="mono muted" style={{ margin: 0, fontSize: ".85rem" }}>
-              {data.player.displayName} · {data.player.gold.toLocaleString()} gold
+              {data.player.displayName} · {data.player.gold.toLocaleString()} gold · Combat rating {data.combatRating}
             </p>
 
-            {active ? (
-              <section className="panel" aria-labelledby="active-training">
-                <h2 id="active-training">Active session</h2>
+            {active && (
+              <section className="panel" aria-labelledby="active-combat">
+                <h2 id="active-combat">{activeIsBattle ? "Active encounter" : "Active training"}</h2>
                 <div className="mono" style={{ fontWeight: 600 }}>
                   {data.activeActivityName ?? pretty(active.definitionId)}
                 </div>
                 <p className="mono muted" style={{ margin: ".35rem 0 .75rem", fontSize: ".8rem" }}>
-                  {rewardText(active.reward)}
+                  {activeIsBattle
+                    ? "Battle outcome is sealed on the server. Claim when the timer finishes."
+                    : rewardText(active.reward)}
                 </p>
                 <div
                   className="bartrack"
                   role="progressbar"
-                  aria-label="Training progress"
+                  aria-label="Activity progress"
                   aria-valuemin={0}
                   aria-valuemax={100}
                   aria-valuenow={Math.round(progress * 100)}
@@ -236,14 +316,51 @@ export function CombatClient({ userId }: { userId: string }) {
                       {busy === "cancel" ? "Cancelling..." : "Cancel"}
                     </button>
                     <button className="btn" onClick={claim} disabled={busy !== null || !ready}>
-                      {busy === "claim" ? "Claiming..." : "Claim training"}
+                      {busy === "claim" ? "Claiming..." : activeIsBattle ? "Reveal battle" : "Claim training"}
                     </button>
                   </div>
                 </div>
               </section>
-            ) : drill && duration ? (
+            )}
+
+            {lastBattle && <BattleReport battle={lastBattle} />}
+
+            {!active && (
+              <section className="panel" aria-labelledby="encounters">
+                <h2 id="encounters">Frontier encounters</h2>
+                <div className="grid three">
+                  {data.enemies.map((enemy) => (
+                    <div className="item" key={enemy.id}>
+                      <div className="item-head">
+                        <strong>{enemy.name}</strong>
+                        <span className="tag">HP {enemy.maxHp}</span>
+                      </div>
+                      <p className="muted" style={{ margin: ".4rem 0 .6rem", fontSize: ".82rem" }}>
+                        {enemy.description}
+                      </p>
+                      <div className="row"><span>Attack</span><strong className="mono">{enemy.attack}</strong></div>
+                      <div className="row"><span>Defense</span><strong className="mono">{enemy.defense}</strong></div>
+                      <div className="row">
+                        <span>Victory loot</span>
+                        <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>{rewardText(enemy.reward)}</strong>
+                      </div>
+                      <button
+                        className="btn"
+                        style={{ width: "100%", marginTop: ".75rem" }}
+                        onClick={() => startBattle(enemy.encounterId, enemy.name)}
+                        disabled={busy !== null}
+                      >
+                        {busy === "start" ? "Starting..." : "Start encounter"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!active && drill && duration && (
               <section className="panel" aria-labelledby="training-drill">
-                <h2 id="training-drill">Choose a combat drill</h2>
+                <h2 id="training-drill">Combat training</h2>
                 <div className="grid" style={{ gap: ".75rem" }}>
                   <label>
                     <span className="label" style={{ display: "block", marginBottom: ".35rem" }}>Combat skill</span>
@@ -285,33 +402,19 @@ export function CombatClient({ userId }: { userId: string }) {
                   <div>
                     <div className="mono" style={{ fontWeight: 600 }}>{drill.name}</div>
                     <p className="muted" style={{ margin: ".25rem 0 .65rem" }}>{drill.description}</p>
-                    <div className="row">
-                      <span>Trains</span>
-                      <strong>{pretty(drill.skillId)}</strong>
-                    </div>
+                    <div className="row"><span>Trains</span><strong>{pretty(drill.skillId)}</strong></div>
                     <div className="row">
                       <span>Rewards</span>
                       <strong className="mono" style={{ textAlign: "right" }}>{rewardText(duration.reward)}</strong>
                     </div>
                   </div>
 
-                  <button className="btn" onClick={start} disabled={busy !== null}>
+                  <button className="btn" onClick={startTraining} disabled={busy !== null}>
                     {busy === "start" ? "Starting..." : "Start training"}
                   </button>
                 </div>
               </section>
-            ) : (
-              <p className="empty">No combat drills are available.</p>
             )}
-
-            <section className="panel" aria-labelledby="training-info">
-              <h2 id="training-info">Combat foundation</h2>
-              <p className="muted" style={{ margin: 0 }}>
-                Strength, Defense, Dexterity, Agility, Vitality and Tactics now have a playable progression loop.
-                Training uses the same server-authoritative activity system as gathering and crafting, so progress
-                continues while you are signed out.
-              </p>
-            </section>
           </div>
         )}
       </main>
