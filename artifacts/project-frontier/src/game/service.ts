@@ -15,7 +15,7 @@ import { combatRatingForSkills } from "./combat";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
-import { EQUIPMENT_SLOTS, getItemDefinition, type EquipmentSlot } from "../content/items";
+import { combatBonusesForEquipment, EQUIPMENT_SLOTS, getItemDefinition, type EquipmentSlot } from "../content/items";
 import { parseEquipCommand, parseEquipmentSlot, type InventoryState, type InventoryView } from "./equipment";
 import { skillDefinitions } from "../content/skills";
 
@@ -170,10 +170,18 @@ export class GameService {
   }
 
   async combatForPlayer(playerId: string): Promise<CombatResponse> {
-    const dashboard = await this.repository.getDashboard(playerId);
+    const [dashboard, inventory] = await Promise.all([
+      this.repository.getDashboard(playerId),
+      this.repository.getInventory(playerId),
+    ]);
     const activeDefinition = dashboard.activeActivity
       ? getActivityDefinition(dashboard.activeActivity.definitionId)
       : undefined;
+    const gearBonuses = combatBonusesForEquipment(
+      inventory.equipment
+        .filter((entry) => entry.equippedSlot !== null)
+        .map((entry) => entry.itemId),
+    );
 
     return {
       serverTime: dashboard.serverTime,
@@ -205,8 +213,10 @@ export class GameService {
         attack: enemy.attack,
         defense: enemy.defense,
         reward: { ...enemy.reward },
+        equipmentDrop: enemy.equipmentDrop ? { ...enemy.equipmentDrop } : undefined,
       })),
-      combatRating: combatRatingForSkills(dashboard.skillXp),
+      combatRating: combatRatingForSkills(dashboard.skillXp, gearBonuses),
+      gearBonuses,
     };
   }
 
@@ -220,11 +230,16 @@ export class GameService {
     if (getEnemyForEncounter(command.definitionId) && command.durationId !== "1m") {
       throw new GameError("invalid_request", "Combat encounters use a fixed one-minute resolution.");
     }
-    return this.repository.startActivity(playerId, command);
+    const activity = await this.repository.startActivity(playerId, command);
+    return getEnemyForEncounter(activity.definitionId)
+      ? { ...activity, reward: { ...definition.reward } }
+      : activity;
   }
 
   async cancelActivity(playerId: string, activityId: string): Promise<ActivityRecord> {
-    return this.repository.cancelActivity(playerId, activityId);
+    const activity = await this.repository.cancelActivity(playerId, activityId);
+    const enemy = getEnemyForEncounter(activity.definitionId);
+    return enemy ? { ...activity, reward: { ...enemy.reward } } : activity;
   }
 
   async claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity> {
