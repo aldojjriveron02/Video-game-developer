@@ -10,9 +10,9 @@ import type { EquipmentSlot } from "../content/items";
 import type { InventoryState } from "../game/equipment";
 import { getActivityDefinition } from "../content/activities";
 import { getActivityDurationPreset, inputsForDuration, rewardForDuration } from "../content/gathering";
-import { getItemDefinition } from "../content/items";
+import { combatBonusesForEquipment, getItemDefinition } from "../content/items";
 import { getEnemyForEncounter } from "../content/encounters";
-import { resolveCombat } from "../game/combat";
+import { resolveCombat, rollCombatEquipmentDrop } from "../game/combat";
 import type {
   ActivityRecord,
   ClaimedActivity,
@@ -80,8 +80,12 @@ function mapLedger(row: DbRow): LedgerRecord {
 }
 
 function activityView(activity: ActivityRecord) {
+  const activeEnemy = activity.status === "active"
+    ? getEnemyForEncounter(activity.definitionId)
+    : undefined;
   return {
     ...activity,
+    reward: activeEnemy ? { ...activeEnemy.reward } : activity.reward,
     startedAt: activity.startedAt.toISOString(),
     finishesAt: activity.finishesAt.toISOString(),
     claimedAt: activity.claimedAt?.toISOString() ?? null,
@@ -282,20 +286,33 @@ export class PostgresGameRepository implements GameRepositoryContract {
       const inputs = inputsForDuration(definition.inputs, durationId);
       const enemy = getEnemyForEncounter(definition.id);
       if (enemy) {
-        const skillRows = rowsFrom(
-          await transaction.execute(sql`
+        const [skillResult, equippedResult] = await Promise.all([
+          transaction.execute(sql`
             SELECT skill_id, xp
             FROM player_skills
             WHERE player_id = ${playerId}::uuid
           `),
-        );
+          transaction.execute(sql`
+            SELECT item_id
+            FROM equipment_instances
+            WHERE player_id = ${playerId}::uuid AND equipped_slot IS NOT NULL
+            ORDER BY equipped_slot
+          `),
+        ]);
+        const skillRows = rowsFrom(skillResult);
+        const equippedItemIds = rowsFrom(equippedResult).map((row) => String(row.item_id));
+        const gearBonuses = combatBonusesForEquipment(equippedItemIds);
+        const combatSeed = `${playerId}:${command.requestId}:${definition.id}`;
         const combat = resolveCombat(
           enemy,
           skillRows.map((row) => ({ skillId: String(row.skill_id), xp: Number(row.xp) })),
-          `${playerId}:${command.requestId}:${definition.id}`,
+          combatSeed,
+          gearBonuses,
         );
+        const equipmentDropId =
+          combat.result === "victory" ? rollCombatEquipmentDrop(enemy, combatSeed) : undefined;
         reward = combat.result === "victory"
-          ? { ...definition.reward, combat }
+          ? { ...definition.reward, combat, ...(equipmentDropId ? { equipmentDropId } : {}) }
           : { gold: 0, xp: 2, itemId: definition.reward.itemId, quantity: 0, combat };
       }
 
@@ -505,6 +522,21 @@ export class PostgresGameRepository implements GameRepositoryContract {
           VALUES (${playerId}::uuid, ${reward.itemId}, ${reward.quantity})
           ON CONFLICT (player_id, item_id)
           DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity
+        `);
+      }
+      if (reward.equipmentDropId) {
+        const droppedItem = getItemDefinition(reward.equipmentDropId);
+        if (!droppedItem || droppedItem.kind !== "equipment") {
+          throw new Error("Combat equipment drop definition is unavailable.");
+        }
+        await transaction.execute(sql`
+          INSERT INTO equipment_instances (player_id, item_id, grant_key)
+          VALUES (
+            ${playerId}::uuid,
+            ${reward.equipmentDropId},
+            ${`combat-drop:${activity.id}:${reward.equipmentDropId}`}
+          )
+          ON CONFLICT (player_id, grant_key) DO NOTHING
         `);
       }
 
