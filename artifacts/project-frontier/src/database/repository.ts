@@ -49,6 +49,7 @@ function mapActivity(row: DbRow): ActivityRecord {
     startedAt: asDate(row.started_at),
     finishesAt: asDate(row.finishes_at),
     claimedAt: row.claimed_at == null ? null : asDate(row.claimed_at),
+    cancelledAt: row.cancelled_at == null ? null : asDate(row.cancelled_at),
     reward: asReward(row.reward),
   };
 }
@@ -69,6 +70,7 @@ function activityView(activity: ActivityRecord) {
     startedAt: activity.startedAt.toISOString(),
     finishesAt: activity.finishesAt.toISOString(),
     claimedAt: activity.claimedAt?.toISOString() ?? null,
+    cancelledAt: activity.cancelledAt?.toISOString() ?? null,
   };
 }
 
@@ -150,7 +152,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
     const [serverTime, activityRows, inventoryRows, ledgerRows] = await Promise.all([
       this.database.execute(sql`SELECT clock_timestamp() AS server_time`),
       this.database.execute(sql`
-        SELECT id, definition_id, status, started_at, finishes_at, claimed_at, reward
+        SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
         FROM activities
         WHERE player_id = ${playerId}::uuid
         ORDER BY started_at DESC
@@ -188,7 +190,9 @@ export class PostgresGameRepository implements GameRepositoryContract {
         };
       })(),
       activeActivity: activeActivity ? activityView(activeActivity) : null,
-      recentActivities: activities.map(activityView),
+      recentActivities: activities
+        .filter((activity) => activity.status !== "active")
+        .map(activityView),
       inventory: rowsFrom(inventoryRows).map((row) => ({
         itemId: String(row.item_id),
         quantity: Number(row.quantity),
@@ -217,7 +221,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
 
       const previousRequest = rowsFrom(
         await transaction.execute(sql`
-          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, reward
+          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
           FROM activities
           WHERE player_id = ${playerId}::uuid AND request_id = ${command.requestId}::uuid
           FOR UPDATE
@@ -259,11 +263,57 @@ export class PostgresGameRepository implements GameRepositoryContract {
             instant.started_at + (${definition.durationSeconds} * INTERVAL '1 second'),
             ${JSON.stringify(definition.reward)}::jsonb
           FROM instant
-          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, reward
+          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
         `),
       )[0];
       if (!inserted) throw new Error("New activity row was not returned.");
       return mapActivity(inserted);
+    });
+  }
+
+  async cancelActivity(playerId: string, activityId: string): Promise<ActivityRecord> {
+    return this.database.transaction(async (transaction) => {
+      const player = rowsFrom(
+        await transaction.execute(
+          sql`SELECT id FROM players WHERE id = ${playerId}::uuid FOR UPDATE`,
+        ),
+      )[0];
+      if (!player) throw new GameError("activity_not_found", "The activity was not found.");
+
+      const activityRow = rowsFrom(
+        await transaction.execute(sql`
+          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          FROM activities
+          WHERE id = ${activityId}::uuid AND player_id = ${playerId}::uuid
+          FOR UPDATE
+        `),
+      )[0];
+      if (!activityRow) {
+        throw new GameError("activity_not_found", "The activity was not found.");
+      }
+
+      const activity = mapActivity(activityRow);
+      if (activity.status === "cancelled") return activity;
+      if (activity.status !== "active") {
+        throw new GameError("activity_not_active", "This activity is no longer active.");
+      }
+
+      const cancelledRow = rowsFrom(
+        await transaction.execute(sql`
+          WITH instant AS (SELECT clock_timestamp() AS cancelled_at)
+          UPDATE activities
+          SET status = 'cancelled', cancelled_at = instant.cancelled_at
+          FROM instant
+          WHERE id = ${activity.id}::uuid
+            AND player_id = ${playerId}::uuid
+            AND status = 'active'
+          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+        `),
+      )[0];
+      if (!cancelledRow) {
+        throw new GameError("activity_not_active", "This activity is no longer active.");
+      }
+      return mapActivity(cancelledRow);
     });
   }
 
@@ -278,7 +328,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
 
       const activityRow = rowsFrom(
         await transaction.execute(sql`
-          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, reward
+          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
           FROM activities
           WHERE id = ${activityId}::uuid AND player_id = ${playerId}::uuid
           FOR UPDATE
@@ -288,6 +338,10 @@ export class PostgresGameRepository implements GameRepositoryContract {
         throw new GameError("activity_not_found", "The activity was not found.");
       }
       const activity = mapActivity(activityRow);
+
+      if (activity.status === "cancelled") {
+        throw new GameError("activity_not_active", "Cancelled activities cannot be claimed.");
+      }
 
       if (activity.status === "claimed") {
         const savedLedger = rowsFrom(
@@ -324,7 +378,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
           UPDATE activities
           SET status = 'claimed', claimed_at = ${serverTime}
           WHERE id = ${activity.id}::uuid AND player_id = ${playerId}::uuid
-          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, reward
+          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
         `),
       )[0];
       await transaction.execute(sql`

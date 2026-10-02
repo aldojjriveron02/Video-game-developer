@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { progressionForXp } from "../../src/game/progression";
+import { MAX_CHARACTER_LEVEL, progressionForXp } from "../../src/game/progression";
 
 describe("player progression", () => {
   it.each([
@@ -17,11 +17,21 @@ describe("player progression", () => {
     });
   });
 
-  it("handles the highest database integer XP without a level cap", () => {
-    const progression = progressionForXp(2_147_483_647);
-    expect(progression.xpIntoLevel).toBeGreaterThanOrEqual(0);
-    expect(progression.xpIntoLevel).toBeLessThan(progression.xpForNextLevel);
-    expect(progression.xpRemaining).toBeGreaterThan(0);
+  it("caps character level at 100 while preserving lifetime XP", () => {
+    const level100Start = 12 * MAX_CHARACTER_LEVEL * (MAX_CHARACTER_LEVEL - 1);
+    expect(progressionForXp(level100Start)).toEqual({
+      level: 100,
+      totalXp: level100Start,
+      xpIntoLevel: 0,
+      xpForNextLevel: 0,
+      xpRemaining: 0,
+    });
+
+    const veryHigh = progressionForXp(2_147_483_647);
+    expect(veryHigh.level).toBe(100);
+    expect(veryHigh.totalXp).toBe(2_147_483_647);
+    expect(veryHigh.xpForNextLevel).toBe(0);
+    expect(veryHigh.xpRemaining).toBe(0);
   });
 
   it.each([-1, 1.5, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1])(

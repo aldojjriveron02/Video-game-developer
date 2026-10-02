@@ -1,18 +1,34 @@
 import "server-only";
 import { z } from "zod";
 import { GameError } from "../game/errors";
+import {
+  extractClerkKey,
+  getEffectivePublishableKey,
+} from "./auth/clerk-keys";
 
 const databaseUrlSchema = z
   .string()
+  .trim()
   .url()
   .refine((value) => value.startsWith("postgres://") || value.startsWith("postgresql://"));
 
-const clerkPublishableKeySchema = z.string().regex(/^pk_(test|live)_[A-Za-z0-9_-]+$/);
-const clerkSecretKeySchema = z.string().regex(/^sk_(test|live)_[A-Za-z0-9_-]+$/);
+const clerkPublishableKeySchema = z.preprocess(
+  (value) =>
+    getEffectivePublishableKey(
+      typeof value === "string" ? value : undefined,
+    ).key,
+  z.string().regex(/^pk_(test|live)_.+$/),
+);
+
+const clerkSecretKeySchema = z.preprocess(
+  (value) => extractClerkKey(typeof value === "string" ? value : undefined, "sk"),
+  z.string().regex(/^sk_(test|live)_.+$/),
+);
 
 const applicationEnvironmentSchema = z.object({
   DATABASE_URL: databaseUrlSchema,
-  CLERK_PUBLISHABLE_KEY: clerkPublishableKeySchema,
+  CLERK_PUBLISHABLE_KEY: clerkPublishableKeySchema.optional(),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublishableKeySchema.optional(),
   CLERK_SECRET_KEY: clerkSecretKeySchema,
 });
 

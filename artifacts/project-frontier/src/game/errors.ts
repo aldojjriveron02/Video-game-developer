@@ -4,6 +4,7 @@ export type GameErrorCode =
   | "activity_not_found"
   | "activity_already_active"
   | "activity_not_finished"
+  | "activity_not_active"
   | "equipment_not_found"
   | "invalid_equipment_slot"
   | "configuration_error"
@@ -15,6 +16,7 @@ const statusByCode: Record<GameErrorCode, number> = {
   activity_not_found: 404,
   activity_already_active: 409,
   activity_not_finished: 409,
+  activity_not_active: 409,
   equipment_not_found: 404,
   invalid_equipment_slot: 400,
   configuration_error: 503,

@@ -54,11 +54,12 @@ export const activities = pgTable(
       .notNull()
       .references(() => players.id, { onDelete: "cascade" }),
     definitionId: text("definition_id").notNull(),
-    status: varchar("status", { length: 16 }).$type<"active" | "claimed">().notNull(),
+    status: varchar("status", { length: 16 }).$type<"active" | "claimed" | "cancelled">().notNull(),
     requestId: uuid("request_id").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true, mode: "date" }).notNull(),
     finishesAt: timestamp("finishes_at", { withTimezone: true, mode: "date" }).notNull(),
     claimedAt: timestamp("claimed_at", { withTimezone: true, mode: "date" }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true, mode: "date" }),
     reward: jsonb("reward").$type<Reward>().notNull(),
   },
   (table) => [
@@ -68,7 +69,13 @@ export const activities = pgTable(
       .on(table.playerId)
       .where(sql`${table.status} = 'active'`),
     index("activities_player_started_idx").on(table.playerId, table.startedAt),
-    check("activities_status_valid", sql`${table.status} IN ('active', 'claimed')`),
+    check("activities_status_valid", sql`${table.status} IN ('active', 'claimed', 'cancelled')`),
+    check(
+      "activities_terminal_timestamp_consistent",
+      sql`(${table.status} = 'active' AND ${table.claimedAt} IS NULL AND ${table.cancelledAt} IS NULL)
+        OR (${table.status} = 'claimed' AND ${table.claimedAt} IS NOT NULL AND ${table.cancelledAt} IS NULL)
+        OR (${table.status} = 'cancelled' AND ${table.claimedAt} IS NULL AND ${table.cancelledAt} IS NOT NULL)`,
+    ),
     check("activities_finishes_after_start", sql`${table.finishesAt} > ${table.startedAt}`),
   ],
 );

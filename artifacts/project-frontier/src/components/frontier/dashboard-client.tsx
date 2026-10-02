@@ -35,7 +35,8 @@ export function DashboardClient({ userId }: { userId: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [claimNotice, setClaimNotice] = useState<ClaimResponse | null>(null);
-  const [busy, setBusy] = useState<null | "start" | "claim">(null);
+  const [activityNotice, setActivityNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "start" | "claim" | "cancel">(null);
   const [now, setNow] = useState(() => Date.now());
   const offset = useRef(0);
   const polls = useRef(0);
@@ -49,6 +50,7 @@ export function DashboardClient({ userId }: { userId: string }) {
       const d = await api<Dashboard>("/dashboard");
       if (!alive.current || mine !== seq.current) return;
       offset.current = Date.parse(d.serverTime) - Date.now();
+      if (d.activeActivity) requestId.current = null;
       setData(d);
       setLoadError(null);
     } catch (e) {
@@ -61,6 +63,7 @@ export function DashboardClient({ userId }: { userId: string }) {
     alive.current = true;
     setData(null);
     setClaimNotice(null);
+    setActivityNotice(null);
     requestId.current = null;
     load();
     const onFocus = () => { polls.current = 0; load(); };
@@ -94,6 +97,7 @@ export function DashboardClient({ userId }: { userId: string }) {
   async function start() {
     if (!data) return;
     setClaimNotice(null);
+    setActivityNotice(null);
     setBusy("start"); setActionError(null);
     requestId.current ??= crypto.randomUUID();
     try {
@@ -113,6 +117,7 @@ export function DashboardClient({ userId }: { userId: string }) {
 
   async function claim() {
     if (!active) return;
+    setActivityNotice(null);
     setBusy("claim"); setActionError(null);
     try {
       const result = await api<ClaimResponse>(`/activities/${encodeURIComponent(active.id)}/claim`, { method: "POST" });
@@ -121,6 +126,28 @@ export function DashboardClient({ userId }: { userId: string }) {
       await load();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Claim failed. Try again.");
+      await load();
+    } finally { setBusy(null); }
+  }
+
+  async function cancel() {
+    if (!active) return;
+    const confirmed = window.confirm(
+      "Cancel this activity? Progress will be discarded and no reward will be granted.",
+    );
+    if (!confirmed) return;
+
+    setBusy("cancel"); setActionError(null); setClaimNotice(null); setActivityNotice(null);
+    try {
+      await api<ActivityResponse>(`/activities/${encodeURIComponent(active.id)}/cancel`, {
+        method: "POST",
+      });
+      requestId.current = null;
+      polls.current = 0;
+      setActivityNotice("Activity cancelled. No rewards were granted. You can start another job now.");
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Cancel failed. Try again.");
       await load();
     } finally { setBusy(null); }
   }
@@ -157,6 +184,13 @@ export function DashboardClient({ userId }: { userId: string }) {
               </section>
               <ProgressionPanel progression={data.progression} />
             </div>
+
+            {activityNotice && (
+              <div className="reward-notice" role="status">
+                <span><strong>{activityNotice}</strong></span>
+                <button className="btn ghost" onClick={() => setActivityNotice(null)} aria-label="Dismiss activity notification">Dismiss</button>
+              </div>
+            )}
 
             {claimNotice && (
               <div className="reward-notice" role="status">
@@ -201,9 +235,14 @@ export function DashboardClient({ userId }: { userId: string }) {
                     <span className="mono" aria-live="off">
                       {ready ? "Ready to claim" : `${fmtTime(remainingMs / 1000)} remaining`}
                     </span>
-                    <button className="btn" onClick={claim} disabled={busy !== null || !ready}>
-                      {busy === "claim" ? "Claiming..." : "Claim reward"}
-                    </button>
+                    <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+                      <button className="btn ghost" onClick={cancel} disabled={busy !== null}>
+                        {busy === "cancel" ? "Cancelling..." : "Cancel"}
+                      </button>
+                      <button className="btn" onClick={claim} disabled={busy !== null || !ready}>
+                        {busy === "claim" ? "Claiming..." : "Claim reward"}
+                      </button>
+                    </div>
                   </div>
                   <p className="muted" style={{ fontSize: ".78rem", margin: ".5rem 0 0" }}>
                     Timer is a display only. The server decides when a claim is accepted.
@@ -228,8 +267,10 @@ export function DashboardClient({ userId }: { userId: string }) {
                 {data.recentActivities.length === 0 ? <p className="empty">No completed work yet.</p> :
                   data.recentActivities.map((a) => (
                     <div className="row" key={a.id}>
-                      <span>{a.definitionId}<br /><span className="muted mono" style={{ fontSize: ".75rem" }}>{fmtDate(a.claimedAt)}</span></span>
-                      <span className="mono" style={{ textAlign: "right", fontSize: ".8rem" }}>{rewardText(a.reward)}</span>
+                      <span>{a.definitionId}<br /><span className="muted mono" style={{ fontSize: ".75rem" }}>{fmtDate(a.claimedAt ?? a.cancelledAt)}</span></span>
+                      <span className="mono" style={{ textAlign: "right", fontSize: ".8rem" }}>
+                        {a.status === "cancelled" ? "Cancelled · no reward" : rewardText(a.reward)}
+                      </span>
                     </div>
                   ))}
               </section>

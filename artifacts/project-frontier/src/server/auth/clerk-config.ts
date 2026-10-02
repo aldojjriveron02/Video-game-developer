@@ -1,10 +1,11 @@
 import "server-only";
-import { publishableKeyFromHost } from "@clerk/shared/keys";
+import { getEffectivePublishableKey } from "./clerk-keys";
 
-export function getClerkOptions(headers: Headers) {
-  const raw = headers.get("x-forwarded-host") ?? headers.get("host") ?? "";
-  const hostname = raw.split(",")[0]?.trim().split(":")[0] ?? "";
-  const publishableKey = publishableKeyFromHost(hostname, process.env.CLERK_PUBLISHABLE_KEY);
-  if (!publishableKey) throw new Error("Authentication configuration is missing.");
-  return { publishableKey, proxyUrl: process.env.CLERK_PROXY_URL };
+export function getClerkOptions() {
+  const rawPublishableKey =
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+    process.env.CLERK_PUBLISHABLE_KEY;
+
+  const { key: publishableKey } = getEffectivePublishableKey(rawPublishableKey);
+  return { publishableKey };
 }

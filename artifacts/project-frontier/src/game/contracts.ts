@@ -2,8 +2,8 @@ import type { Progression } from "./progression";
 
 export type Reward = { gold: number; xp: number; itemId: string; quantity: number };
 export type ActivityView = {
-  id: string; definitionId: string; status: "active" | "claimed";
-  startedAt: string; finishesAt: string; claimedAt: string | null;
+  id: string; definitionId: string; status: "active" | "claimed" | "cancelled";
+  startedAt: string; finishesAt: string; claimedAt: string | null; cancelledAt: string | null;
   reward: Reward;
 };
 export type ActivityResponse = { activity: ActivityView };

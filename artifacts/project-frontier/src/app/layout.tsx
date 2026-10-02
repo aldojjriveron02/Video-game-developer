@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { headers } from "next/headers";
 import { getClerkOptions } from "@/server/auth/clerk-config";
 import "./globals.css";
 
@@ -10,16 +9,16 @@ export const metadata: Metadata = {
   icons: { icon: "/logo.svg" },
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const clerkOptions = getClerkOptions(await headers());
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const clerkOptions = getClerkOptions();
+
   return (
-    <ClerkProvider
-      publishableKey={clerkOptions.publishableKey}
-      proxyUrl={clerkOptions.proxyUrl}
-    >
-      <html lang="en">
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body>
+        <ClerkProvider publishableKey={clerkOptions.publishableKey}>
+          {children}
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

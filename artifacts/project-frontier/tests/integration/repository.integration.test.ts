@@ -204,6 +204,45 @@ describe("PostgreSQL game repository", () => {
     expect(dashboard.activeActivity).toBeNull();
   });
 
+  it("cancels active work without rewards and immediately permits another activity", async () => {
+    const player = await createPlayer();
+    const before = await repository.getDashboard(player.id);
+    const activity = await repository.startActivity(player.id, {
+      definitionId: "gather-wood",
+      requestId: randomUUID(),
+    });
+
+    const cancelled = await repository.cancelActivity(player.id, activity.id);
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.cancelledAt).not.toBeNull();
+    expect(cancelled.claimedAt).toBeNull();
+
+    const retryCancel = await new PostgresGameRepository(database).cancelActivity(
+      player.id,
+      activity.id,
+    );
+    expect(retryCancel.id).toBe(activity.id);
+    expect(retryCancel.status).toBe("cancelled");
+
+    await expect(repository.claimActivity(player.id, activity.id)).rejects.toMatchObject({
+      code: "activity_not_active",
+    });
+
+    const afterCancel = await repository.getDashboard(player.id);
+    expect(afterCancel.player.gold).toBe(before.player.gold);
+    expect(afterCancel.player.xp).toBe(before.player.xp);
+    expect(afterCancel.inventory).toEqual(before.inventory);
+    expect(afterCancel.ledger).toEqual(before.ledger);
+    expect(afterCancel.activeActivity).toBeNull();
+
+    const replacement = await repository.startActivity(player.id, {
+      definitionId: "gather-wood",
+      requestId: randomUUID(),
+    });
+    expect(replacement.status).toBe("active");
+    expect(replacement.id).not.toBe(activity.id);
+  });
+
   it("allows only one of two concurrent distinct starts", async () => {
     const player = await createPlayer();
     const results = await Promise.allSettled([

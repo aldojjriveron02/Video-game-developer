@@ -15,6 +15,13 @@
       "when": 1790892333213,
       "tag": "0001_magenta_alex_power",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790907000000,
+      "tag": "0002_cancelled_activities",
+      "breakpoints": true
     }
   ]
 }

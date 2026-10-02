@@ -17,10 +17,11 @@ export type Player = {
 export type ActivityRecord = {
   id: string;
   definitionId: string;
-  status: "active" | "claimed";
+  status: "active" | "claimed" | "cancelled";
   startedAt: Date;
   finishesAt: Date;
   claimedAt: Date | null;
+  cancelledAt: Date | null;
   reward: Reward;
 };
 
@@ -44,6 +45,7 @@ export interface GameRepository {
   resolveClerkIdentity(clerkUserId: string, displayName: string): Promise<Player>;
   getDashboard(playerId: string): Promise<Omit<Dashboard, "gathering" | "progression">>;
   startActivity(playerId: string, command: StartActivityCommand): Promise<ActivityRecord>;
+  cancelActivity(playerId: string, activityId: string): Promise<ActivityRecord>;
   claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity>;
   getInventory(playerId: string): Promise<InventoryState>;
   equip(playerId: string, instanceId: string, slot: EquipmentSlot): Promise<void>;
@@ -88,6 +90,10 @@ export class GameService {
       throw new GameError("invalid_request", "The requested activity is not available.");
     }
     return this.repository.startActivity(playerId, command);
+  }
+
+  async cancelActivity(playerId: string, activityId: string): Promise<ActivityRecord> {
+    return this.repository.cancelActivity(playerId, activityId);
   }
 
   async claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity> {
