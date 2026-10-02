@@ -7,13 +7,15 @@ import {
 import { getItemDefinition } from "../../src/content/items";
 
 describe("gathering activity definitions", () => {
-  it("provides one starter activity for each gathering skill", () => {
+  it("covers every gathering skill while allowing multiple resource routes", () => {
     const definitions = getGatheringDefinitions();
-    expect(definitions).toHaveLength(6);
-    expect(new Set(definitions.map((activity) => activity.id)).size).toBe(6);
+    expect(definitions).toHaveLength(8);
+    expect(new Set(definitions.map((activity) => activity.id)).size).toBe(8);
     expect(new Set(definitions.map((activity) => activity.reward.skillId))).toEqual(
       new Set(["mining", "woodcutting", "fishing", "hunting", "herbalism", "foraging"]),
     );
+    expect(definitions.find((activity) => activity.id === "mine-iron-ore")?.reward.itemId).toBe("iron-ore");
+    expect(definitions.find((activity) => activity.id === "gather-plant-fiber")?.reward.itemId).toBe("plant-fiber");
   });
 
   it("uses a one-minute base rate and valid resource rewards", () => {

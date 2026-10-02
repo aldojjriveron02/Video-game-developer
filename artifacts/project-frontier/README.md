@@ -42,7 +42,7 @@ Project Frontier is a Next.js 16 App Router modular monolith. The Next server ow
 
 ## Architecture and integrity
 
-- `src/content` holds validated, versioned activity definitions. The starter gathering set currently covers Mining, Woodcutting, Fishing, Hunting, Herbalism and Foraging. Players can choose server-owned work periods of 1 minute, 5 minutes, 15 minutes, 1 hour, 4 hours or 8 hours. Reward snapshots scale from the one-minute base rate and are stored with the activity when work starts.
+- `src/content` holds validated, versioned activity definitions. The starter gathering set covers Mining, Woodcutting, Fishing, Hunting, Herbalism and Foraging, with additional Mining and Foraging routes for iron ore and plant fiber used by production. Players can choose server-owned work periods of 1 minute, 5 minutes, 15 minutes, 1 hour, 4 hours or 8 hours. Reward snapshots scale from the one-minute base rate and are stored with the activity when work starts.
 - `src/game` contains the game contract, command validation, errors, and service boundary. `src/database` owns Drizzle schema/migrations and the PostgreSQL repository.
 - `src/server/identity.ts` is the only boundary from Clerk subject identity to an internal player UUID. Player rows are lazily provisioned from real authenticated Clerk identities; no seeded/test identity is used by application paths.
 - Each start, cancel and claim takes a transaction-scoped `FOR UPDATE` lock on that player's row. A partial unique index independently enforces one active activity per player. `(player_id, request_id)` makes retries return the original start. Crafting inputs are checked and consumed inside the same start transaction; cancellation refunds the stored input snapshot exactly once.
@@ -67,7 +67,7 @@ Signing out does not delete the character; signing back in with the same Clerk i
 
 ## Workshop and production foundation
 
-`/crafting` provides timed production using the same single-active-activity engine as gathering. Starter recipes currently cover Carpentry (wood → lumber), Cooking (river fish → cooked fish), Leatherworking (hide → leather), and Alchemy (herbs + berries → herbal tonic). Recipe batches use the same 1 minute through 8 hour duration presets. Required inputs and outputs scale together from the one-minute recipe, and the server snapshots both when the activity starts.
+`/crafting` provides timed production using the same single-active-activity engine as gathering. Starter recipes now cover all six production skills: Blacksmithing (iron ore → iron ingot), Cooking (river fish → cooked fish), Alchemy (herbs + berries → herbal tonic), Carpentry (wood → lumber), Leatherworking (hide → leather), and Tailoring (plant fiber → cloth). Recipe batches use the same 1 minute through 8 hour duration presets. Required inputs and outputs scale together from the one-minute recipe, and the server snapshots both when the activity starts.
 
 Materials are removed transactionally at start so the player cannot spend them twice. If production is cancelled, the stored input snapshot is returned exactly once. Successful claims grant the crafted resource, character XP and matching production-skill XP exactly once.
 

@@ -3,11 +3,11 @@ import { getCraftingDefinitions } from "../../src/content/crafting";
 import { activityDurationPresets, inputsForDuration, rewardForDuration } from "../../src/content/gathering";
 
 describe("crafting definitions", () => {
-  it("provides starter recipes for four production skills", () => {
+  it("provides starter recipes for all six production skills", () => {
     const recipes = getCraftingDefinitions();
-    expect(recipes).toHaveLength(4);
+    expect(recipes).toHaveLength(6);
     expect(new Set(recipes.map((recipe) => recipe.reward.skillId))).toEqual(
-      new Set(["carpentry", "cooking", "leatherworking", "alchemy"]),
+      new Set(["blacksmithing", "cooking", "alchemy", "carpentry", "leatherworking", "tailoring"]),
     );
     expect(recipes.every((recipe) => recipe.inputs.length > 0)).toBe(true);
   });

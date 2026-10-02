@@ -48,6 +48,15 @@ const gatheringDefinitions = [
     version: 2,
   },
   {
+    id: "mine-iron-ore",
+    name: "Mine iron ore",
+    description: "Extract iron-bearing ore from harder frontier rock.",
+    durationSeconds: 60,
+    inputs: [],
+    reward: { gold: 12, xp: 8, itemId: "iron-ore", quantity: 2, skillId: "mining", skillXp: 8 },
+    version: 1,
+  },
+  {
     id: "fish-river",
     name: "Fish the river",
     description: "Work the nearby water for fresh river fish.",
@@ -73,6 +82,15 @@ const gatheringDefinitions = [
     inputs: [],
     reward: { gold: 12, xp: 8, itemId: "medicinal-herb", quantity: 3, skillId: "herbalism", skillXp: 8 },
     version: 2,
+  },
+  {
+    id: "gather-plant-fiber",
+    name: "Gather plant fiber",
+    description: "Collect tough grasses and fibers suitable for textile work.",
+    durationSeconds: 60,
+    inputs: [],
+    reward: { gold: 12, xp: 8, itemId: "plant-fiber", quantity: 3, skillId: "foraging", skillXp: 8 },
+    version: 1,
   },
   {
     id: "forage-berries",

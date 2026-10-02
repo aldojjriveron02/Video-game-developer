@@ -13,6 +13,15 @@ const craftingDefinitions = [
     version: 1,
   },
   {
+    id: "smelt-iron-ingot",
+    name: "Smelt iron ingot",
+    description: "Refine frontier iron ore into workable metal stock.",
+    durationSeconds: 60,
+    inputs: [{ itemId: "iron-ore", quantity: 3 }],
+    reward: { gold: 0, xp: 6, itemId: "iron-ingot", quantity: 1, skillId: "blacksmithing", skillXp: 8 },
+    version: 1,
+  },
+  {
     id: "cook-river-fish",
     name: "Cook river fish",
     description: "Prepare fresh fish into a durable travel meal.",
@@ -28,6 +37,15 @@ const craftingDefinitions = [
     durationSeconds: 60,
     inputs: [{ itemId: "hide", quantity: 2 }],
     reward: { gold: 0, xp: 6, itemId: "leather", quantity: 1, skillId: "leatherworking", skillXp: 8 },
+    version: 1,
+  },
+  {
+    id: "weave-cloth",
+    name: "Weave cloth",
+    description: "Spin and weave gathered plant fiber into usable cloth.",
+    durationSeconds: 60,
+    inputs: [{ itemId: "plant-fiber", quantity: 3 }],
+    reward: { gold: 0, xp: 6, itemId: "cloth", quantity: 1, skillId: "tailoring", skillXp: 8 },
     version: 1,
   },
   {
