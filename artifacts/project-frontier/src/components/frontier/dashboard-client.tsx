@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { UserButton } from "@clerk/nextjs";
 import {
   Backpack,
   BarChart3,
-  Coins,
   Hammer,
   Map,
   ScrollText,
@@ -24,8 +22,8 @@ import type {
   QuestsResponse,
   Reward,
 } from "@/game/contracts";
-import { Brand } from "./brand";
 import { PlayerNav } from "./player-nav";
+import { GameHeader, OperatorPortrait } from "./frontier-ui";
 
 type ApiError = { error: string; code: string };
 const MAX_POLLS = 20;
@@ -327,20 +325,7 @@ export function DashboardClient({ userId }: { userId: string }) {
 
   return (
     <>
-      <header className="bar game-header">
-        <div className="wrap">
-          <Brand />
-          <div className="header-resources">
-            {data && (
-              <span className="resource-chip">
-                <Coins size={16} aria-hidden="true" />
-                {data.player.gold.toLocaleString()}
-              </span>
-            )}
-          </div>
-          <UserButton />
-        </div>
-      </header>
+      <GameHeader gold={data?.player.gold} />
 
       <PlayerNav current="dashboard" />
 
@@ -358,11 +343,8 @@ export function DashboardClient({ userId }: { userId: string }) {
         {data && (
           <div className="home-grid">
             <section className="character-hero game-card">
-              <div className="character-art" aria-hidden="true">
-                <div className="character-emblem">
-                  {data.player.displayName.slice(0, 1).toUpperCase()}
-                </div>
-                <div className="character-ridge" />
+              <div className="character-art">
+                <OperatorPortrait name={data.player.displayName} />
               </div>
 
               <div className="character-info">
@@ -576,7 +558,7 @@ export function DashboardClient({ userId }: { userId: string }) {
               <div className="quick-section-title">Quick Access</div>
               <div className="quick-grid">
                 <QuickLink href="/inventory" label="Inventory" Icon={Backpack} />
-                <QuickLink href="/inventory" label="Equipment" Icon={Shield} />
+                <QuickLink href="/gathering" label="Gathering" Icon={Trees} />
                 <QuickLink href="/skills" label="Skills" Icon={BarChart3} />
                 <QuickLink href="/crafting" label="Workshop" Icon={Hammer} />
                 <QuickLink href="/combat" label="Combat" Icon={Swords} />
