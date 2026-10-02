@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { UserButton } from "@clerk/nextjs";
+import { Check, Lock, ScrollText, TimerReset } from "lucide-react";
 import type { ActivityResponse, ClaimResponse, QuestsResponse, QuestView, Reward } from "@/game/contracts";
-import { Brand } from "./brand";
 import { PlayerNav } from "./player-nav";
+import { GameHeader, ItemGlyph, RegionArt, ScreenHeading } from "./frontier-ui";
 
 type ApiError = { error?: string };
 
@@ -16,9 +16,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   const body = await response.json().catch(() => null) as ApiError | T | null;
-  if (!response.ok) {
-    throw new Error((body as ApiError | null)?.error ?? `Request failed (${response.status})`);
-  }
+  if (!response.ok) throw new Error((body as ApiError | null)?.error ?? `Request failed (${response.status})`);
   return body as T;
 }
 
@@ -27,16 +25,10 @@ function pretty(id: string) {
 }
 
 function rewardText(reward: Reward) {
-  const parts = [`+${reward.xp.toLocaleString()} XP`, `+${reward.gold.toLocaleString()} gold`];
-  if (reward.quantity > 0) parts.push(`+${reward.quantity.toLocaleString()} ${pretty(reward.itemId)}`);
+  const parts = [`${reward.xp.toLocaleString()} XP`, `${reward.gold.toLocaleString()} gold`];
+  if (reward.quantity > 0) parts.push(`${reward.quantity.toLocaleString()} ${pretty(reward.itemId)}`);
   if (reward.equipmentDropId) parts.push(`Gear: ${pretty(reward.equipmentDropId)}`);
   return parts.join(" · ");
-}
-
-function costsText(quest: QuestView) {
-  return quest.inputs
-    .map((input) => `${input.quantity.toLocaleString()} ${pretty(input.itemId)}`)
-    .join(" + ");
 }
 
 function fmtTime(milliseconds: number) {
@@ -47,9 +39,17 @@ function fmtTime(milliseconds: number) {
 
 function activeDestination(definitionId: string) {
   if (definitionId.startsWith("fight-") || definitionId.startsWith("train-")) return "/combat";
-  if (definitionId.startsWith("craft-") || definitionId.startsWith("smelt-") || definitionId.startsWith("cook-") || definitionId.startsWith("tan-") || definitionId.startsWith("weave-") || definitionId.startsWith("brew-")) return "/crafting";
+  if (/^(craft|smelt|cook|tan|weave|brew)-/.test(definitionId)) return "/crafting";
   if (definitionId.startsWith("quest-")) return "/quests";
   return "/dashboard";
+}
+
+function regionId(name: string) {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("rust")) return "rust-trail";
+  if (normalized.includes("quarry")) return "old-quarry";
+  if (normalized.includes("outpost")) return "ruined-outpost";
+  return "pine-verge";
 }
 
 export function QuestsClient({ userId }: { userId: string }) {
@@ -81,9 +81,7 @@ export function QuestsClient({ userId }: { userId: string }) {
     setData(null);
     setError(null);
     load();
-    const refresh = () => {
-      if (document.visibilityState === "visible") load();
-    };
+    const refresh = () => { if (document.visibilityState === "visible") load(); };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
     const poll = setInterval(refresh, 15000);
@@ -98,9 +96,7 @@ export function QuestsClient({ userId }: { userId: string }) {
   }, [load, userId]);
 
   const active = data?.activeActivity ?? null;
-  const activeQuest = active
-    ? data?.quests.find((quest) => quest.id === active.definitionId) ?? null
-    : null;
+  const activeQuest = active ? data?.quests.find((quest) => quest.id === active.definitionId) ?? null : null;
   const serverNow = now + offset.current;
   const remaining = active ? Date.parse(active.finishesAt) - serverNow : 0;
   const total = active ? Date.parse(active.finishesAt) - Date.parse(active.startedAt) : 1;
@@ -116,11 +112,7 @@ export function QuestsClient({ userId }: { userId: string }) {
       await api<ActivityResponse>("/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          definitionId: quest.id,
-          durationId: "1m",
-          requestId: requestId.current,
-        }),
+        body: JSON.stringify({ definitionId: quest.id, durationId: "1m", requestId: requestId.current }),
       });
       requestId.current = null;
       setNotice(`${quest.name} started. Required supplies are reserved until the handoff finishes.`);
@@ -157,13 +149,8 @@ export function QuestsClient({ userId }: { userId: string }) {
     setError(null);
     setNotice(null);
     try {
-      const result = await api<ClaimResponse>(
-        `/activities/${encodeURIComponent(active.id)}/claim`,
-        { method: "POST" },
-      );
-      if (result.rewardGranted) {
-        setNotice(`Quest complete: ${activeQuest.name}. ${rewardText(result.activity.reward)}.`);
-      }
+      const result = await api<ClaimResponse>(`/activities/${encodeURIComponent(active.id)}/claim`, { method: "POST" });
+      if (result.rewardGranted) setNotice(`Quest complete: ${activeQuest.name}. ${rewardText(result.activity.reward)}.`);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not claim the quest.");
@@ -177,150 +164,105 @@ export function QuestsClient({ userId }: { userId: string }) {
 
   return (
     <>
-      <header className="bar">
-        <div className="wrap"><Brand /><UserButton /></div>
-      </header>
+      <GameHeader gold={data?.player.gold} />
       <PlayerNav current="quests" />
-      <main className="wrap" style={{ padding: "1.5rem 1.25rem 4rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", alignItems: "end", marginBottom: "1rem" }}>
-          <div>
-            <p className="label" style={{ marginBottom: ".3rem" }}>Station command</p>
-            <h1 className="mono" style={{ margin: 0, fontSize: "1.65rem" }}>Quests</h1>
-          </div>
-          {data && (
-            <div className="mono muted" style={{ fontSize: ".82rem", textAlign: "right" }}>
-              {data.player.displayName}
-              <br />
-              Chain progress {completed} / {data.quests.length}
-            </div>
-          )}
-        </div>
+      <main className="wrap game-screen">
+        <ScreenHeading
+          eyebrow="Station command"
+          title="Quests"
+          description="Campaign assignments turn gathering, crafting and combat into a single frontier story."
+          metric={data && <><span>Campaign</span><strong>{completed}/{data.quests.length}</strong></>}
+        />
 
-        {error && (
-          <div className="alert" role="alert" style={{ marginBottom: "1rem" }}>
-            <span>{error}</span>
-            <button className="btn ghost sm" onClick={load}>Retry</button>
-          </div>
-        )}
-        {notice && (
-          <div className="reward-notice" role="status" style={{ marginBottom: "1rem" }}>
-            <span>{notice}</span>
-            <button className="btn ghost sm" onClick={() => setNotice(null)}>Dismiss</button>
-          </div>
-        )}
-
-        {!data && !error && (
-          <div className="grid" role="status" aria-label="Loading quests">
-            <div className="skel" style={{ height: 150 }} />
-            <div className="skel" style={{ height: 190 }} />
-          </div>
-        )}
+        {error && <div className="alert" role="alert"><span>{error}</span><button className="btn ghost sm" onClick={load}>Retry</button></div>}
+        {notice && <div className="reward-notice" role="status"><span>{notice}</span><button className="btn ghost sm" onClick={() => setNotice(null)}>Dismiss</button></div>}
+        {!data && !error && <div className="grid"><div className="skel" style={{ height: 280 }} /><div className="skel" style={{ height: 360 }} /></div>}
 
         {data && (
-          <div className="grid">
+          <div className="game-screen-stack">
             {activeQuest && (
-              <section className="panel" aria-labelledby="active-quest">
-                <h2 id="active-quest">Active quest handoff</h2>
-                <div className="mono" style={{ fontWeight: 600 }}>{activeQuest.name}</div>
-                <p className="muted" style={{ margin: ".3rem 0 .75rem" }}>{activeQuest.objective}</p>
-                <div
-                  className="bartrack"
-                  role="progressbar"
-                  aria-label="Quest handoff progress"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(progress * 100)}
-                >
-                  <div className="barfill" style={{ transform: `scaleX(${progress})` }} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", flexWrap: "wrap", alignItems: "center", marginTop: ".75rem" }}>
-                  <span className="mono">{ready ? "Ready to complete" : `${fmtTime(remaining)} remaining`}</span>
-                  <div className="item-actions">
-                    <button className="btn ghost" onClick={cancelQuest} disabled={busy !== null}>
-                      {busy === "cancel" ? "Cancelling..." : "Cancel"}
-                    </button>
-                    <button className="btn" onClick={claimQuest} disabled={busy !== null || !ready}>
-                      {busy === "claim" ? "Completing..." : "Complete quest"}
-                    </button>
+              <section className="game-card active-quest-card">
+                <RegionArt regionId={regionId(activeQuest.regionName)} name={activeQuest.regionName} compact />
+                <div className="active-quest-content">
+                  <div className="section-banner quest-banner">
+                    <ScrollText size={20} />
+                    <span>Active Quest</span>
+                    <small>{activeQuest.regionName}</small>
+                  </div>
+                  <div className="active-quest-inner">
+                    <h2>{activeQuest.name}</h2>
+                    <p>{activeQuest.objective}</p>
+                    <div className="bartrack"><div className="barfill" style={{ transform: `scaleX(${progress})` }} /></div>
+                    <div className="activity-time">
+                      <strong>{ready ? "Ready to complete" : `${fmtTime(remaining)} remaining`}</strong>
+                      <span><TimerReset size={14} /> Server handoff</span>
+                    </div>
+                    <div className="activity-actions">
+                      <button className="btn ghost" onClick={cancelQuest} disabled={busy !== null}>{busy === "cancel" ? "Cancelling..." : "Cancel"}</button>
+                      <button className="btn gold-btn" onClick={claimQuest} disabled={busy !== null || !ready}>{busy === "claim" ? "Completing..." : "Complete Quest"}</button>
+                    </div>
                   </div>
                 </div>
               </section>
             )}
 
             {active && !activeQuest && (
-              <section className="panel">
-                <h2>Another assignment is active</h2>
-                <div className="mono" style={{ fontWeight: 600 }}>
-                  {data.activeActivityName ?? pretty(active.definitionId)}
+              <section className="game-card blocking-activity">
+                <div className="section-banner"><Lock size={19} /><span>Another Activity Is Active</span></div>
+                <div className="blocking-activity-body">
+                  <h2>{data.activeActivityName ?? pretty(active.definitionId)}</h2>
+                  <p>Finish or cancel the current activity before beginning a campaign handoff.</p>
+                  <Link href={activeDestination(active.definitionId)} className="btn gold-btn">Open Active Activity</Link>
                 </div>
-                <p className="muted">
-                  Finish or cancel the current activity before beginning a quest.
-                </p>
-                <Link href={activeDestination(active.definitionId)} className="btn">Open active activity</Link>
               </section>
             )}
 
-            <section className="panel">
-              <h2>Frontier campaign</h2>
-              <p className="muted" style={{ margin: "0 0 1rem" }}>
-                One-time station assignments connect gathering, crafting and exploration into a campaign.
-                Supplies are removed when a quest starts and returned if you cancel before completion.
-              </p>
+            <section className="quest-campaign">
+              {data.quests.map((quest, index) => {
+                const locked = quest.status === "locked";
+                const completedQuest = quest.status === "completed";
+                const questActive = quest.status === "active";
+                const canStart = quest.status === "available" && quest.hasInputs && !active;
+                return (
+                  <article
+                    className={completedQuest ? "campaign-card completed" : locked ? "campaign-card locked" : questActive ? "campaign-card active" : "campaign-card"}
+                    key={quest.id}
+                  >
+                    <RegionArt regionId={regionId(quest.regionName)} name={quest.regionName} compact />
+                    <div className="campaign-card-content">
+                      <div className="campaign-card-head">
+                        <span className="chapter-number">Chapter {index + 1}</span>
+                        <span className={completedQuest ? "campaign-state complete" : questActive ? "campaign-state active" : locked ? "campaign-state locked" : "campaign-state"}>
+                          {completedQuest ? <><Check size={13} /> Completed</> : questActive ? "Active" : locked ? <><Lock size={13} /> Locked</> : "Available"}
+                        </span>
+                      </div>
+                      <h2>{quest.name}</h2>
+                      <p>{quest.description}</p>
 
-              <div className="quest-chain">
-                {data.quests.map((quest, index) => {
-                  const locked = quest.status === "locked";
-                  const completedQuest = quest.status === "completed";
-                  const questActive = quest.status === "active";
-                  const canStart = quest.status === "available" && quest.hasInputs && !active;
-                  return (
-                    <div className="quest-step" key={quest.id}>
-                      {index > 0 && <div className={locked ? "quest-line" : "quest-line open"} aria-hidden="true" />}
-                      <article className={completedQuest ? "quest-card completed" : locked ? "quest-card locked" : "quest-card"}>
-                        <div className="item-head">
-                          <div>
-                            <span className="tag">{quest.regionName}</span>{" "}
-                            <span className={completedQuest || questActive ? "tag on" : "tag"}>
-                              {completedQuest ? "Completed" : questActive ? "Active" : locked ? "Locked" : "Available"}
-                            </span>
+                      <div className="quest-objective-list">
+                        {quest.inputs.map((input) => (
+                          <div className="quest-objective-row" key={input.itemId}>
+                            <span className={completedQuest ? "check on" : "check"} />
+                            <ItemGlyph id={input.itemId} size={18} />
+                            <span>{input.quantity.toLocaleString()} {pretty(input.itemId)}</span>
                           </div>
-                          <span className="mono muted" style={{ fontSize: ".74rem" }}>Q-{String(index + 1).padStart(2, "0")}</span>
-                        </div>
+                        ))}
+                      </div>
 
-                        <h3 className="mono" style={{ margin: ".7rem 0 .25rem", fontSize: "1.05rem" }}>{quest.name}</h3>
-                        <p className="muted" style={{ margin: "0 0 .6rem", fontSize: ".86rem" }}>{quest.description}</p>
-                        <p style={{ margin: "0 0 .7rem" }}><strong>{quest.objective}</strong></p>
+                      <div className="quest-reward-box">
+                        <span>Rewards</span>
+                        <strong>{rewardText(quest.reward)}</strong>
+                      </div>
 
-                        <div className="row">
-                          <span>Requires</span>
-                          <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>{costsText(quest)}</strong>
-                        </div>
-                        <div className="row">
-                          <span>Reward</span>
-                          <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>{rewardText(quest.reward)}</strong>
-                        </div>
-
-                        {!completedQuest && !locked && !questActive && !quest.hasInputs && (
-                          <p className="muted" style={{ margin: ".7rem 0 0", fontSize: ".8rem" }}>
-                            Gather or craft the required supplies first.
-                          </p>
-                        )}
-
-                        {!completedQuest && !locked && !questActive && (
-                          <button
-                            className="btn"
-                            style={{ marginTop: ".75rem", width: "100%" }}
-                            disabled={!canStart || busy !== null}
-                            onClick={() => startQuest(quest)}
-                          >
-                            {busy === "start" ? "Starting..." : quest.hasInputs ? "Begin handoff" : "Missing supplies"}
-                          </button>
-                        )}
-                      </article>
+                      {!completedQuest && !locked && !questActive && (
+                        <button className="btn gold-btn quest-start-btn" disabled={!canStart || busy !== null} onClick={() => startQuest(quest)}>
+                          {busy === "start" ? "Starting..." : quest.hasInputs ? "Begin Quest Handoff" : "Missing Supplies"}
+                        </button>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  </article>
+                );
+              })}
             </section>
           </div>
         )}
