@@ -28,7 +28,7 @@ const definitions: readonly ItemDefinition[] = [
   { id: "cloth", name: "Cloth", kind: "resource", description: "Woven frontier cloth ready for future tailoring recipes." },
   { id: "cooked-fish", name: "Cooked Fish", kind: "resource", description: "Prepared river fish ready for travel or later food systems." },
   { id: "leather", name: "Leather", kind: "resource", description: "Tanned hide ready for leatherworking recipes." },
-  { id: "herbal-tonic", name: "Herbal Tonic", kind: "resource", description: "A basic alchemical tonic prepared from frontier plants." },
+  { id: "herbal-tonic", name: "Herbal Tonic", kind: "resource", description: "A basic alchemical tonic prepared from frontier plants." },\n  { id: "training-mark", name: "Training Mark", kind: "resource", description: "A stamped record earned from completed combat training sessions." },
   { id: "field-axe", name: "Field Axe", kind: "equipment", slot: "hand", rarity: "common",
     description: "A basic station-issued axe. Starter hand equipment; it does not change gathering rewards or speed." },
   { id: "work-vest", name: "Work Vest", kind: "equipment", slot: "body", rarity: "common",
