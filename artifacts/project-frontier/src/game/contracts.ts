@@ -1,5 +1,25 @@
 import type { Progression } from "./progression";
 
+export type CombatRoundView = {
+  round: number;
+  playerDamage: number;
+  enemyDamage: number;
+  playerHpAfter: number;
+  enemyHpAfter: number;
+};
+
+export type CombatResolutionView = {
+  result: "victory" | "defeat";
+  enemyId: string;
+  enemyName: string;
+  playerMaxHp: number;
+  enemyMaxHp: number;
+  playerHp: number;
+  enemyHp: number;
+  rounds: CombatRoundView[];
+  combatRating: number;
+};
+
 export type Reward = {
   gold: number;
   xp: number;
@@ -7,6 +27,7 @@ export type Reward = {
   quantity: number;
   skillId?: string;
   skillXp?: number;
+  combat?: CombatResolutionView;
 };
 
 export type ResourceCost = {
@@ -99,10 +120,23 @@ export type CombatDrillView = ActivityDefinitionView & {
   skillId: string;
 };
 
+export type CombatEnemyView = {
+  id: string;
+  encounterId: string;
+  name: string;
+  description: string;
+  maxHp: number;
+  attack: number;
+  defense: number;
+  reward: Reward;
+};
+
 export type CombatResponse = {
   serverTime: string;
   player: Dashboard["player"];
   activeActivity: ActivityView | null;
   activeActivityName: string | null;
   drills: CombatDrillView[];
+  enemies: CombatEnemyView[];
+  combatRating: number;
 };
