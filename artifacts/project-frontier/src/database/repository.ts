@@ -143,6 +143,21 @@ export class PostgresGameRepository implements GameRepositoryContract {
     });
   }
 
+  async completedDefinitionIds(
+    playerId: string,
+    definitionIds: readonly string[],
+  ): Promise<string[]> {
+    if (definitionIds.length === 0) return [];
+    const result = await this.database.execute(sql`
+      SELECT DISTINCT definition_id
+      FROM activities
+      WHERE player_id = ${playerId}::uuid
+        AND status = 'claimed'
+        AND definition_id = ANY(${definitionIds}::text[])
+    `);
+    return rowsFrom(result).map((row) => String(row.definition_id));
+  }
+
   async getInventory(playerId: string): Promise<InventoryState> {
     const [dashboard, equipment] = await Promise.all([
       this.getDashboard(playerId), this.equipmentRepository.list(playerId),
