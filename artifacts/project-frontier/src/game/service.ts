@@ -1,4 +1,4 @@
-import type { CombatResponse, CraftingResponse, Dashboard, ResourceCost, Reward, SkillsResponse } from "./contracts";
+import type { CombatResponse, CraftingResponse, Dashboard, QuestsResponse, ResourceCost, Reward, SkillsResponse } from "./contracts";
 import {
   activityDurationPresets,
   getActivityDurationPreset,
@@ -11,6 +11,7 @@ import { getActivityDefinition } from "../content/activities";
 import { getCraftingDefinitions } from "../content/crafting";
 import { getCombatDefinitions } from "../content/combat";
 import { getEnemyDefinitions, getEnemyForEncounter } from "../content/encounters";
+import { getQuestDefinition, getQuestDefinitions } from "../content/quests";
 import { combatRatingForSkills } from "./combat";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
@@ -68,6 +69,7 @@ export interface GameRepository {
   cancelActivity(playerId: string, activityId: string): Promise<ActivityRecord>;
   claimActivity(playerId: string, activityId: string): Promise<ClaimedActivity>;
   getInventory(playerId: string): Promise<InventoryState>;
+  completedDefinitionIds(playerId: string, definitionIds: readonly string[]): Promise<string[]>;
   equip(playerId: string, instanceId: string, slot: EquipmentSlot): Promise<void>;
   unequip(playerId: string, slot: EquipmentSlot): Promise<void>;
 }
@@ -223,6 +225,53 @@ export class GameService {
     };
   }
 
+  async questsForPlayer(playerId: string): Promise<QuestsResponse> {
+    const definitions = getQuestDefinitions();
+    const [dashboard, completedIds] = await Promise.all([
+      this.repository.getDashboard(playerId),
+      this.repository.completedDefinitionIds(playerId, definitions.map((quest) => quest.id)),
+    ]);
+    const completed = new Set(completedIds);
+    const available = new Map(dashboard.inventory.map((entry) => [entry.itemId, entry.quantity]));
+    const activeDefinition = dashboard.activeActivity
+      ? getActivityDefinition(dashboard.activeActivity.definitionId)
+      : undefined;
+
+    return {
+      serverTime: dashboard.serverTime,
+      player: dashboard.player,
+      activeActivity: dashboard.activeActivity,
+      activeActivityName: activeDefinition?.name ?? null,
+      quests: definitions.map((quest) => {
+        const isCompleted = completed.has(quest.id);
+        const isActive = dashboard.activeActivity?.definitionId === quest.id;
+        const prerequisiteMet = !quest.requiredQuestId || completed.has(quest.requiredQuestId);
+        const hasInputs = quest.inputs.every(
+          (input) => (available.get(input.itemId) ?? 0) >= input.quantity,
+        );
+        const status = isCompleted
+          ? "completed"
+          : isActive
+            ? "active"
+            : prerequisiteMet
+              ? "available"
+              : "locked";
+        return {
+          id: quest.id,
+          name: quest.name,
+          description: quest.description,
+          objective: quest.objective,
+          regionName: quest.regionName,
+          status,
+          inputs: quest.inputs.map((input) => ({ ...input })),
+          reward: { ...quest.reward },
+          hasInputs,
+          ...(quest.requiredQuestId ? { requiredQuestId: quest.requiredQuestId } : {}),
+        };
+      }),
+    };
+  }
+
   async startActivity(playerId: string, input: unknown): Promise<ActivityRecord> {
     const command = parseStartActivityCommand(input);
     const definition = getActivityDefinition(command.definitionId);
@@ -232,6 +281,22 @@ export class GameService {
     }
     if (getEnemyForEncounter(command.definitionId) && command.durationId !== "1m") {
       throw new GameError("invalid_request", "Combat encounters use a fixed one-minute resolution.");
+    }
+    const quest = getQuestDefinition(command.definitionId);
+    if (quest) {
+      if (command.durationId !== "1m") {
+        throw new GameError("invalid_request", "Quest turn-ins use a fixed one-minute handoff.");
+      }
+      const completed = new Set(await this.repository.completedDefinitionIds(
+        playerId,
+        [quest.id, ...(quest.requiredQuestId ? [quest.requiredQuestId] : [])],
+      ));
+      if (completed.has(quest.id)) {
+        throw new GameError("invalid_request", "This quest has already been completed.");
+      }
+      if (quest.requiredQuestId && !completed.has(quest.requiredQuestId)) {
+        throw new GameError("invalid_request", "Complete the previous quest first.");
+      }
     }
     const activity = await this.repository.startActivity(playerId, command);
     return getEnemyForEncounter(activity.definitionId)
