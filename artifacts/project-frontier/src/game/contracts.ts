@@ -18,6 +18,14 @@ export type CombatResolutionView = {
   enemyHp: number;
   rounds: CombatRoundView[];
   combatRating: number;
+  gearBonuses: {
+    strength: number;
+    defense: number;
+    dexterity: number;
+    agility: number;
+    vitality: number;
+    tactics: number;
+  };
 };
 
 export type Reward = {
@@ -28,6 +36,7 @@ export type Reward = {
   skillId?: string;
   skillXp?: number;
   combat?: CombatResolutionView;
+  equipmentDropId?: string;
 };
 
 export type ResourceCost = {
@@ -129,6 +138,7 @@ export type CombatEnemyView = {
   attack: number;
   defense: number;
   reward: Reward;
+  equipmentDrop?: { itemId: string; chance: number };
 };
 
 export type CombatResponse = {
@@ -139,4 +149,12 @@ export type CombatResponse = {
   drills: CombatDrillView[];
   enemies: CombatEnemyView[];
   combatRating: number;
+  gearBonuses: {
+    strength: number;
+    defense: number;
+    dexterity: number;
+    agility: number;
+    vitality: number;
+    tactics: number;
+  };
 };
