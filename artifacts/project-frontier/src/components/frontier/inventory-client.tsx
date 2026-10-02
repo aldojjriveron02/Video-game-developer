@@ -22,6 +22,13 @@ async function api(path: string, init?: RequestInit): Promise<InventoryView> {
 
 type Notice = { ok: boolean; text: string };
 
+function bonusText(bonuses: object) {
+  const parts = Object.entries(bonuses)
+    .filter(([, value]) => typeof value === "number" && value > 0)
+    .map(([key, value]) => `+${value} ${key.charAt(0).toUpperCase() + key.slice(1)}`);
+  return parts.length > 0 ? parts.join(" · ") : "No combat bonuses";
+}
+
 export function InventoryClient({ userId }: { userId: string }) {
   const router = useRouter();
   const [data, setData] = useState<InventoryView | null>(null);
@@ -119,7 +126,7 @@ export function InventoryClient({ userId }: { userId: string }) {
           return (
             <div className="grid">
               <p className="muted" style={{ margin: 0, fontSize: ".85rem" }}>
-                Gear foundation: equipment is stored and tracked, but has no gathering bonuses yet. Rewards and speed are unchanged.
+                Equipped gear now changes combat stats. Gathering speed and resource rewards are still unchanged.
               </p>
 
               <section className="panel" aria-labelledby="slots">
@@ -158,6 +165,7 @@ export function InventoryClient({ userId }: { userId: string }) {
                             <strong>{e.item.name}</strong>{" "}
                             <span className="tag">{label}</span>{" "}
                             <span className="tag">{e.item.rarity}</span>{" "}
+                            <span className="tag on">{bonusText(e.item.combatBonuses)}</span>{" "}
                             {e.equippedSlot
                               ? <span className="tag on">Equipped · {data.slots.find((s) => s.slot === e.equippedSlot)?.label}</span>
                               : <span className="tag">Not equipped</span>}
@@ -182,6 +190,9 @@ export function InventoryClient({ userId }: { userId: string }) {
                         {isOpen && (
                           <div className="detail" id={did}>
                             <p style={{ margin: 0 }}>{e.item.description}</p>
+                            <p className="mono" style={{ margin: ".4rem 0 0", fontSize: ".78rem" }}>
+                              Combat: {bonusText(e.item.combatBonuses)}
+                            </p>
                             <p className="mono muted" style={{ margin: ".4rem 0 0", fontSize: ".75rem" }}>
                               Fits: {label} only · Instance {e.id.slice(0, 8)} · Acquired {new Date(e.acquiredAt).toLocaleString()}
                             </p>
