@@ -161,3 +161,27 @@ export type CombatResponse = {
     tactics: number;
   };
 };
+
+
+export type QuestStatus = "locked" | "available" | "active" | "completed";
+
+export type QuestView = {
+  id: string;
+  name: string;
+  description: string;
+  objective: string;
+  regionName: string;
+  status: QuestStatus;
+  inputs: ResourceCost[];
+  reward: Reward;
+  hasInputs: boolean;
+  requiredQuestId?: string;
+};
+
+export type QuestsResponse = {
+  serverTime: string;
+  player: Dashboard["player"];
+  activeActivity: ActivityView | null;
+  activeActivityName: string | null;
+  quests: QuestView[];
+};
