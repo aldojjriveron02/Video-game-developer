@@ -12,7 +12,7 @@ import { getActivityDefinition } from "../content/activities";
 import { getActivityDurationPreset, inputsForDuration, rewardForDuration } from "../content/gathering";
 import { combatBonusesForEquipment, getItemDefinition } from "../content/items";
 import { getEnemyForEncounter } from "../content/encounters";
-import { resolveCombat, rollCombatEquipmentDrop } from "../game/combat";
+import { combatRatingForSkills, resolveCombat, rollCombatEquipmentDrop } from "../game/combat";
 import type {
   ActivityRecord,
   ClaimedActivity,
@@ -302,10 +302,21 @@ export class PostgresGameRepository implements GameRepositoryContract {
         const skillRows = rowsFrom(skillResult);
         const equippedItemIds = rowsFrom(equippedResult).map((row) => String(row.item_id));
         const gearBonuses = combatBonusesForEquipment(equippedItemIds);
+        const combatSkills = skillRows.map((row) => ({
+          skillId: String(row.skill_id),
+          xp: Number(row.xp),
+        }));
+        const combatRating = combatRatingForSkills(combatSkills, gearBonuses);
+        if (combatRating < enemy.requiredCombatRating) {
+          throw new GameError(
+            "invalid_request",
+            `${enemy.name} requires combat rating ${enemy.requiredCombatRating}. Your current rating is ${combatRating}.`,
+          );
+        }
         const combatSeed = `${playerId}:${command.requestId}:${definition.id}`;
         const combat = resolveCombat(
           enemy,
-          skillRows.map((row) => ({ skillId: String(row.skill_id), xp: Number(row.xp) })),
+          combatSkills,
           combatSeed,
           gearBonuses,
         );
