@@ -1,3 +1,5 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffd987"/><stop offset=".58" stop-color="#d49a45"/><stop offset="1" stop-color="#8f552a"/></linearGradient></defs>
+  <rect width="64" height="64" rx="12" fill="#07111f"/>
+  <path d="M9 48 25 18l7 12 7-15 16 33H44l-6-13-6 13-7-13-6 13Z" fill="url(#g)"/>
 </svg>
