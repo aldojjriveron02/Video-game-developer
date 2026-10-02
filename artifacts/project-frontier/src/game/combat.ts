@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
+import type { CombatBonuses } from "../content/items";
 import type { EnemyDefinition } from "../content/encounters";
 import { progressionForXp } from "./progression";
 
 export type CombatSkillXp = { skillId: string; xp: number };
+export type ResolvedGearBonuses = Required<CombatBonuses>;
 
 export type CombatRound = {
   round: number;
@@ -22,6 +24,7 @@ export type CombatResolution = {
   enemyHp: number;
   rounds: CombatRound[];
   combatRating: number;
+  gearBonuses: ResolvedGearBonuses;
 };
 
 function levelOf(skills: Map<string, number>, id: string) {
@@ -38,29 +41,52 @@ function rng(seed: string) {
   };
 }
 
-export function combatRatingForSkills(skillXp: CombatSkillXp[]): number {
+function withDefaults(bonuses?: CombatBonuses): ResolvedGearBonuses {
+  return {
+    strength: bonuses?.strength ?? 0,
+    defense: bonuses?.defense ?? 0,
+    dexterity: bonuses?.dexterity ?? 0,
+    agility: bonuses?.agility ?? 0,
+    vitality: bonuses?.vitality ?? 0,
+    tactics: bonuses?.tactics ?? 0,
+  };
+}
+
+export function combatRatingForSkills(
+  skillXp: CombatSkillXp[],
+  bonuses?: CombatBonuses,
+): number {
   const skills = new Map(skillXp.map((entry) => [entry.skillId, entry.xp]));
-  const strength = levelOf(skills, "strength");
-  const defense = levelOf(skills, "defense");
-  const dexterity = levelOf(skills, "dexterity");
-  const agility = levelOf(skills, "agility");
-  const vitality = levelOf(skills, "vitality");
-  const tactics = levelOf(skills, "tactics");
+  const gear = withDefaults(bonuses);
+  const strength = levelOf(skills, "strength") + gear.strength;
+  const defense = levelOf(skills, "defense") + gear.defense;
+  const dexterity = levelOf(skills, "dexterity") + gear.dexterity;
+  const agility = levelOf(skills, "agility") + gear.agility;
+  const vitality = levelOf(skills, "vitality") + gear.vitality;
+  const tactics = levelOf(skills, "tactics") + gear.tactics;
   return strength * 3 + defense * 3 + dexterity * 2 + agility * 2 + vitality * 3 + tactics * 2;
+}
+
+export function rollCombatEquipmentDrop(enemy: EnemyDefinition, seed: string): string | undefined {
+  if (!enemy.equipmentDrop) return undefined;
+  const random = rng(`${seed}:equipment-drop`);
+  return random() < enemy.equipmentDrop.chance ? enemy.equipmentDrop.itemId : undefined;
 }
 
 export function resolveCombat(
   enemy: EnemyDefinition,
   skillXp: CombatSkillXp[],
   seed: string,
+  bonuses?: CombatBonuses,
 ): CombatResolution {
   const skills = new Map(skillXp.map((entry) => [entry.skillId, entry.xp]));
-  const strength = levelOf(skills, "strength");
-  const defense = levelOf(skills, "defense");
-  const dexterity = levelOf(skills, "dexterity");
-  const agility = levelOf(skills, "agility");
-  const vitality = levelOf(skills, "vitality");
-  const tactics = levelOf(skills, "tactics");
+  const gear = withDefaults(bonuses);
+  const strength = levelOf(skills, "strength") + gear.strength;
+  const defense = levelOf(skills, "defense") + gear.defense;
+  const dexterity = levelOf(skills, "dexterity") + gear.dexterity;
+  const agility = levelOf(skills, "agility") + gear.agility;
+  const vitality = levelOf(skills, "vitality") + gear.vitality;
+  const tactics = levelOf(skills, "tactics") + gear.tactics;
 
   const playerMaxHp = 28 + vitality * 6 + defense * 2;
   let playerHp = playerMaxHp;
@@ -105,6 +131,7 @@ export function resolveCombat(
     playerHp,
     enemyHp,
     rounds,
-    combatRating: combatRatingForSkills(skillXp),
+    combatRating: combatRatingForSkills(skillXp, gear),
+    gearBonuses: gear,
   };
 }
