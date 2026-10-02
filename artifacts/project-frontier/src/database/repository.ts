@@ -2,13 +2,15 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import type { FrontierDatabase } from "./client";
-import type { Reward } from "../game/contracts";
+import type { ResourceCost, Reward } from "../game/contracts";
 import { GameError } from "../game/errors";
 import { progressionForXp } from "../game/progression";
 import { EquipmentRepository, grantStarterEquipment } from "./equipment-repository";
 import type { EquipmentSlot } from "../content/items";
 import type { InventoryState } from "../game/equipment";
-import { getActivityDefinition, getActivityDurationPreset, rewardForDuration } from "../content/gathering";
+import { getActivityDefinition } from "../content/activities";
+import { getActivityDurationPreset, inputsForDuration, rewardForDuration } from "../content/gathering";
+import { getItemDefinition } from "../content/items";
 import type {
   ActivityRecord,
   ClaimedActivity,
@@ -31,6 +33,16 @@ function asReward(value: unknown): Reward {
   return (typeof value === "string" ? JSON.parse(value) : value) as Reward;
 }
 
+function asInputs(value: unknown): ResourceCost[] {
+  const parsed = typeof value === "string" ? JSON.parse(value) : value;
+  return Array.isArray(parsed)
+    ? parsed.map((input) => ({
+        itemId: String((input as { itemId?: unknown }).itemId ?? ""),
+        quantity: Number((input as { quantity?: unknown }).quantity ?? 0),
+      }))
+    : [];
+}
+
 function mapPlayer(row: DbRow): Player {
   return {
     id: String(row.id),
@@ -51,6 +63,7 @@ function mapActivity(row: DbRow): ActivityRecord {
     claimedAt: row.claimed_at == null ? null : asDate(row.claimed_at),
     cancelledAt: row.cancelled_at == null ? null : asDate(row.cancelled_at),
     reward: asReward(row.reward),
+    inputs: asInputs(row.inputs),
   };
 }
 
@@ -152,7 +165,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
     const [serverTime, activityRows, inventoryRows, ledgerRows, skillRows] = await Promise.all([
       this.database.execute(sql`SELECT clock_timestamp() AS server_time`),
       this.database.execute(sql`
-        SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+        SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
         FROM activities
         WHERE player_id = ${playerId}::uuid
         ORDER BY started_at DESC
@@ -234,7 +247,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
 
       const previousRequest = rowsFrom(
         await transaction.execute(sql`
-          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
           FROM activities
           WHERE player_id = ${playerId}::uuid AND request_id = ${command.requestId}::uuid
           FOR UPDATE
@@ -264,11 +277,45 @@ export class PostgresGameRepository implements GameRepositoryContract {
         throw new GameError("invalid_request", "The requested activity is not available.");
       }
       const reward = rewardForDuration(definition.reward, durationId);
+      const inputs = inputsForDuration(definition.inputs, durationId);
+
+      for (const input of inputs) {
+        const inventoryRow = rowsFrom(
+          await transaction.execute(sql`
+            SELECT quantity
+            FROM inventory
+            WHERE player_id = ${playerId}::uuid AND item_id = ${input.itemId}
+            FOR UPDATE
+          `),
+        )[0];
+        const available = Number(inventoryRow?.quantity ?? 0);
+        if (available < input.quantity) {
+          const item = getItemDefinition(input.itemId);
+          throw new GameError(
+            "insufficient_resources",
+            `You need ${input.quantity.toLocaleString()} ${item?.name ?? input.itemId}.`,
+          );
+        }
+
+        if (available === input.quantity) {
+          await transaction.execute(sql`
+            DELETE FROM inventory
+            WHERE player_id = ${playerId}::uuid AND item_id = ${input.itemId}
+          `);
+        } else {
+          await transaction.execute(sql`
+            UPDATE inventory
+            SET quantity = quantity - ${input.quantity}
+            WHERE player_id = ${playerId}::uuid AND item_id = ${input.itemId}
+          `);
+        }
+      }
+
       const inserted = rowsFrom(
         await transaction.execute(sql`
           WITH instant AS (SELECT clock_timestamp() AS started_at)
           INSERT INTO activities (
-            player_id, definition_id, status, request_id, started_at, finishes_at, reward
+            player_id, definition_id, status, request_id, started_at, finishes_at, reward, inputs
           )
           SELECT
             ${playerId}::uuid,
@@ -277,9 +324,10 @@ export class PostgresGameRepository implements GameRepositoryContract {
             ${command.requestId}::uuid,
             instant.started_at,
             instant.started_at + (${duration.durationSeconds} * INTERVAL '1 second'),
-            ${JSON.stringify(reward)}::jsonb
+            ${JSON.stringify(reward)}::jsonb,
+            ${JSON.stringify(inputs)}::jsonb
           FROM instant
-          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
         `),
       )[0];
       if (!inserted) throw new Error("New activity row was not returned.");
@@ -298,7 +346,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
 
       const activityRow = rowsFrom(
         await transaction.execute(sql`
-          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
           FROM activities
           WHERE id = ${activityId}::uuid AND player_id = ${playerId}::uuid
           FOR UPDATE
@@ -323,13 +371,23 @@ export class PostgresGameRepository implements GameRepositoryContract {
           WHERE id = ${activity.id}::uuid
             AND player_id = ${playerId}::uuid
             AND status = 'active'
-          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
         `),
       )[0];
       if (!cancelledRow) {
         throw new GameError("activity_not_active", "This activity is no longer active.");
       }
-      return mapActivity(cancelledRow);
+
+      const cancelled = mapActivity(cancelledRow);
+      for (const input of cancelled.inputs) {
+        await transaction.execute(sql`
+          INSERT INTO inventory (player_id, item_id, quantity)
+          VALUES (${playerId}::uuid, ${input.itemId}, ${input.quantity})
+          ON CONFLICT (player_id, item_id)
+          DO UPDATE SET quantity = inventory.quantity + EXCLUDED.quantity
+        `);
+      }
+      return cancelled;
     });
   }
 
@@ -344,7 +402,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
 
       const activityRow = rowsFrom(
         await transaction.execute(sql`
-          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          SELECT id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
           FROM activities
           WHERE id = ${activityId}::uuid AND player_id = ${playerId}::uuid
           FOR UPDATE
@@ -413,7 +471,7 @@ export class PostgresGameRepository implements GameRepositoryContract {
           UPDATE activities
           SET status = 'claimed', claimed_at = ${serverTime}
           WHERE id = ${activity.id}::uuid AND player_id = ${playerId}::uuid
-          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward
+          RETURNING id, definition_id, status, started_at, finishes_at, claimed_at, cancelled_at, reward, inputs
         `),
       )[0];
       await transaction.execute(sql`

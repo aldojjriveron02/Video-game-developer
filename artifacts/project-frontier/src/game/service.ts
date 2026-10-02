@@ -1,12 +1,14 @@
-import type { Dashboard, Reward, SkillsResponse } from "./contracts";
+import type { CraftingResponse, Dashboard, ResourceCost, Reward, SkillsResponse } from "./contracts";
 import {
   activityDurationPresets,
-  getActivityDefinition,
   getActivityDurationPreset,
   getGatheringDefinition,
   getGatheringDefinitions,
+  inputsForDuration,
   rewardForDuration,
 } from "../content/gathering";
+import { getActivityDefinition } from "../content/activities";
+import { getCraftingDefinitions } from "../content/crafting";
 import { startActivityCommandSchema, type StartActivityCommand } from "./commands";
 import { GameError } from "./errors";
 import { progressionForXp, type Progression } from "./progression";
@@ -31,6 +33,7 @@ export type ActivityRecord = {
   claimedAt: Date | null;
   cancelledAt: Date | null;
   reward: Reward;
+  inputs: ResourceCost[];
 };
 
 export type LedgerRecord = {
@@ -100,11 +103,13 @@ export class GameService {
         description: definition.description,
         durationSeconds: definition.durationSeconds,
         reward: { ...definition.reward },
+        inputs: [...definition.inputs],
         durationOptions: activityDurationPresets.map((preset) => ({
           id: preset.id,
           label: preset.label,
           durationSeconds: preset.durationSeconds,
           reward: rewardForDuration(definition.reward, preset.id),
+          inputs: inputsForDuration(definition.inputs, preset.id),
         })),
       },
       gatheringActivities: definitions.map((activity) => ({
@@ -113,11 +118,13 @@ export class GameService {
         description: activity.description,
         durationSeconds: activity.durationSeconds,
         reward: { ...activity.reward },
+        inputs: [...activity.inputs],
         durationOptions: activityDurationPresets.map((preset) => ({
           id: preset.id,
           label: preset.label,
           durationSeconds: preset.durationSeconds,
           reward: rewardForDuration(activity.reward, preset.id),
+          inputs: inputsForDuration(activity.inputs, preset.id),
         })),
       })),
     };
@@ -126,6 +133,37 @@ export class GameService {
   async skillsForPlayer(playerId: string): Promise<SkillsResponse> {
     const dashboard = await this.dashboardForPlayer(playerId);
     return { player: dashboard.player, skills: dashboard.skills };
+  }
+
+  async craftingForPlayer(playerId: string): Promise<CraftingResponse> {
+    const dashboard = await this.repository.getDashboard(playerId);
+    const activeDefinition = dashboard.activeActivity
+      ? getActivityDefinition(dashboard.activeActivity.definitionId)
+      : undefined;
+
+    return {
+      serverTime: dashboard.serverTime,
+      player: dashboard.player,
+      activeActivity: dashboard.activeActivity,
+      activeActivityName: activeDefinition?.name ?? null,
+      inventory: dashboard.inventory,
+      recipes: getCraftingDefinitions().map((recipe) => ({
+        id: recipe.id,
+        name: recipe.name,
+        description: recipe.description,
+        durationSeconds: recipe.durationSeconds,
+        reward: { ...recipe.reward },
+        inputs: recipe.inputs.map((input) => ({ ...input })),
+        skillId: recipe.reward.skillId ?? "",
+        durationOptions: activityDurationPresets.map((preset) => ({
+          id: preset.id,
+          label: preset.label,
+          durationSeconds: preset.durationSeconds,
+          reward: rewardForDuration(recipe.reward, preset.id),
+          inputs: inputsForDuration(recipe.inputs, preset.id),
+        })),
+      })),
+    };
   }
 
   async startActivity(playerId: string, input: unknown): Promise<ActivityRecord> {

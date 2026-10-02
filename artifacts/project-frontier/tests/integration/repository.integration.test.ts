@@ -59,7 +59,7 @@ describe("PostgreSQL game repository", () => {
     await testPool.query(
       `WITH instant AS (SELECT clock_timestamp() AS now)
        UPDATE activities
-       SET started_at = instant.now - INTERVAL '31 seconds',
+       SET started_at = instant.now - INTERVAL '9 hours',
            finishes_at = instant.now - INTERVAL '1 second'
        FROM instant
        WHERE id = $1`,
@@ -222,6 +222,75 @@ describe("PostgreSQL game repository", () => {
     const dashboard = await repository.getDashboard(player.id);
     expect(dashboard.inventory).toContainEqual({ itemId: "stone", quantity: 3 });
     expect(dashboard.skillXp).toContainEqual({ skillId: "mining", xp: 8 });
+  });
+
+  it("consumes crafting inputs, refunds them on cancel, and grants production rewards once", async () => {
+    const player = await createPlayer();
+    await testPool.query(
+      "INSERT INTO inventory (player_id, item_id, quantity) VALUES ($1, 'wood', 6)",
+      [player.id],
+    );
+
+    const first = await repository.startActivity(player.id, {
+      definitionId: "craft-lumber",
+      durationId: "1m",
+      requestId: randomUUID(),
+    });
+    expect(first.inputs).toEqual([{ itemId: "wood", quantity: 3 }]);
+
+    let dashboard = await repository.getDashboard(player.id);
+    expect(dashboard.inventory).toContainEqual({ itemId: "wood", quantity: 3 });
+
+    const cancelled = await repository.cancelActivity(player.id, first.id);
+    expect(cancelled.status).toBe("cancelled");
+    dashboard = await repository.getDashboard(player.id);
+    expect(dashboard.inventory).toContainEqual({ itemId: "wood", quantity: 6 });
+
+    const retryCancel = await repository.cancelActivity(player.id, first.id);
+    expect(retryCancel.status).toBe("cancelled");
+    dashboard = await repository.getDashboard(player.id);
+    expect(dashboard.inventory).toContainEqual({ itemId: "wood", quantity: 6 });
+
+    const second = await repository.startActivity(player.id, {
+      definitionId: "craft-lumber",
+      durationId: "1m",
+      requestId: randomUUID(),
+    });
+    await markActivityReady(second.id);
+    const claim = await repository.claimActivity(player.id, second.id);
+    expect(claim.rewardGranted).toBe(true);
+    expect(claim.activity.reward).toMatchObject({
+      itemId: "lumber",
+      quantity: 1,
+      skillId: "carpentry",
+      skillXp: 8,
+    });
+
+    const retryClaim = await repository.claimActivity(player.id, second.id);
+    expect(retryClaim.rewardGranted).toBe(false);
+
+    dashboard = await repository.getDashboard(player.id);
+    expect(dashboard.inventory).toContainEqual({ itemId: "wood", quantity: 3 });
+    expect(dashboard.inventory).toContainEqual({ itemId: "lumber", quantity: 1 });
+    expect(dashboard.skillXp).toContainEqual({ skillId: "carpentry", xp: 8 });
+  });
+
+  it("rejects crafting when the player cannot afford the selected batch", async () => {
+    const player = await createPlayer();
+    await testPool.query(
+      "INSERT INTO inventory (player_id, item_id, quantity) VALUES ($1, 'wood', 6)",
+      [player.id],
+    );
+
+    await expect(repository.startActivity(player.id, {
+      definitionId: "craft-lumber",
+      durationId: "5m",
+      requestId: randomUUID(),
+    })).rejects.toMatchObject({ code: "insufficient_resources" });
+
+    const dashboard = await repository.getDashboard(player.id);
+    expect(dashboard.inventory).toContainEqual({ itemId: "wood", quantity: 6 });
+    expect(dashboard.activeActivity).toBeNull();
   });
 
   it("advances levels once and preserves resources/progression after re-resolving the same identity", async () => {

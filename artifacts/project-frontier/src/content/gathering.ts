@@ -1,4 +1,4 @@
-import type { Reward } from "../game/contracts";
+import type { ResourceCost, Reward } from "../game/contracts";
 import { getSkillDefinition } from "./skills";
 import { getItemDefinition } from "./items";
 
@@ -8,6 +8,7 @@ export type ActivityDefinition = {
   description: string;
   durationSeconds: number;
   reward: Reward;
+  inputs: ResourceCost[];
   version: number;
 };
 
@@ -33,6 +34,7 @@ const gatheringDefinitions = [
     name: "Gather wood",
     description: "Collect sturdy wood from the nearby forest.",
     durationSeconds: 60,
+    inputs: [],
     reward: { gold: 12, xp: 8, itemId: "wood", quantity: 3, skillId: "woodcutting", skillXp: 8 },
     version: 2,
   },
@@ -41,6 +43,7 @@ const gatheringDefinitions = [
     name: "Mine stone",
     description: "Break usable stone from shallow frontier deposits.",
     durationSeconds: 60,
+    inputs: [],
     reward: { gold: 12, xp: 8, itemId: "stone", quantity: 3, skillId: "mining", skillXp: 8 },
     version: 2,
   },
@@ -49,6 +52,7 @@ const gatheringDefinitions = [
     name: "Fish the river",
     description: "Work the nearby water for fresh river fish.",
     durationSeconds: 60,
+    inputs: [],
     reward: { gold: 12, xp: 8, itemId: "river-fish", quantity: 2, skillId: "fishing", skillXp: 8 },
     version: 2,
   },
@@ -57,6 +61,7 @@ const gatheringDefinitions = [
     name: "Hunt small game",
     description: "Track nearby wildlife for hides and useful materials.",
     durationSeconds: 60,
+    inputs: [],
     reward: { gold: 12, xp: 8, itemId: "hide", quantity: 2, skillId: "hunting", skillXp: 8 },
     version: 2,
   },
@@ -65,6 +70,7 @@ const gatheringDefinitions = [
     name: "Gather herbs",
     description: "Collect common medicinal plants from the frontier.",
     durationSeconds: 60,
+    inputs: [],
     reward: { gold: 12, xp: 8, itemId: "medicinal-herb", quantity: 3, skillId: "herbalism", skillXp: 8 },
     version: 2,
   },
@@ -73,6 +79,7 @@ const gatheringDefinitions = [
     name: "Forage berries",
     description: "Search the nearby wilds for edible berries and supplies.",
     durationSeconds: 60,
+    inputs: [],
     reward: { gold: 12, xp: 8, itemId: "wild-berries", quantity: 3, skillId: "foraging", skillXp: 8 },
     version: 2,
   },
@@ -114,7 +121,7 @@ export const activityDefinitions = new Map(
   }),
 );
 
-export function getActivityDefinition(id: string): ActivityDefinition | undefined {
+export function getGatheringActivityDefinition(id: string): ActivityDefinition | undefined {
   return activityDefinitions.get(id);
 }
 
@@ -123,7 +130,7 @@ export function getGatheringDefinitions(): readonly ActivityDefinition[] {
 }
 
 export function getGatheringDefinition(): ActivityDefinition {
-  const definition = getActivityDefinition("gather-wood");
+  const definition = getGatheringActivityDefinition("gather-wood");
   if (!definition) {
     throw new Error("Required activity definition gather-wood is missing.");
   }
@@ -144,4 +151,13 @@ export function rewardForDuration(reward: Reward, durationId: string): Reward {
     quantity: reward.quantity * preset.rewardMultiplier,
     skillXp: reward.skillXp == null ? undefined : reward.skillXp * preset.rewardMultiplier,
   };
+}
+
+export function inputsForDuration(inputs: readonly ResourceCost[], durationId: string): ResourceCost[] {
+  const preset = getActivityDurationPreset(durationId);
+  if (!preset) throw new Error("Unknown activity duration preset.");
+  return inputs.map((input) => ({
+    itemId: input.itemId,
+    quantity: input.quantity * preset.rewardMultiplier,
+  }));
 }

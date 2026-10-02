@@ -106,7 +106,7 @@ export function DashboardClient({ userId }: { userId: string }) {
     ? data.gatheringActivities.find((activity) => activity.id === selectedActivityId) ?? data.gathering
     : null;
   const activeDefinition: ActivityDefinitionView | null = active && data
-    ? data.gatheringActivities.find((activity) => activity.id === active.definitionId) ?? selectedActivity
+    ? data.gatheringActivities.find((activity) => activity.id === active.definitionId) ?? null
     : selectedActivity;
   const selectedDuration = selectedActivity
     ? selectedActivity.durationOptions.find((duration) => duration.id === selectedDurationId)
@@ -167,7 +167,9 @@ export function DashboardClient({ userId }: { userId: string }) {
   async function cancel() {
     if (!active) return;
     const confirmed = window.confirm(
-      "Cancel this activity? Progress will be discarded and no reward will be granted.",
+      active.inputs.length > 0
+        ? "Cancel this activity? Reserved materials will be returned and no reward will be granted."
+        : "Cancel this activity? Progress will be discarded and no reward will be granted.",
     );
     if (!confirmed) return;
 
@@ -178,7 +180,11 @@ export function DashboardClient({ userId }: { userId: string }) {
       });
       requestId.current = null;
       polls.current = 0;
-      setActivityNotice("Activity cancelled. No rewards were granted. You can start another job now.");
+      setActivityNotice(
+        active.inputs.length > 0
+          ? "Activity cancelled. Reserved materials were returned. You can start another job now."
+          : "Activity cancelled. No rewards were granted. You can start another job now.",
+      );
       await load();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Cancel failed. Try again.");
@@ -302,7 +308,7 @@ export function DashboardClient({ userId }: { userId: string }) {
                   </div>
                 </div>
               )}
-              {active && activeDefinition && (
+              {active && (
                 <div style={{ marginTop: "1rem" }}>
                   <div className="bartrack" role="progressbar" aria-label="Gathering progress"
                     aria-valuemin={0} aria-valuemax={100}
@@ -311,7 +317,9 @@ export function DashboardClient({ userId }: { userId: string }) {
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: ".75rem", gap: "1rem", flexWrap: "wrap" }}>
                     <span className="mono" aria-live="off">
-                      <strong>{activeDefinition.name}</strong>{" · "}
+                      <strong style={{ textTransform: "capitalize" }}>
+                        {activeDefinition?.name ?? active.definitionId.replaceAll("-", " ")}
+                      </strong>{" · "}
                       {ready ? "Ready to claim" : `${fmtTime(remainingMs / 1000)} remaining`}
                     </span>
                     <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>

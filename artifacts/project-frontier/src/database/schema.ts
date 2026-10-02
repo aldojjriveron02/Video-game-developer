@@ -12,7 +12,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { Reward } from "../game/contracts";
+import type { ResourceCost, Reward } from "../game/contracts";
 import type { EquipmentSlot } from "../content/items";
 
 export const players = pgTable(
@@ -61,6 +61,7 @@ export const activities = pgTable(
     claimedAt: timestamp("claimed_at", { withTimezone: true, mode: "date" }),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true, mode: "date" }),
     reward: jsonb("reward").$type<Reward>().notNull(),
+    inputs: jsonb("inputs").$type<ResourceCost[]>().notNull().default(sql`'[]'::jsonb`),
   },
   (table) => [
     uniqueIndex("activities_player_request_unique").on(table.playerId, table.requestId),
@@ -77,6 +78,7 @@ export const activities = pgTable(
         OR (${table.status} = 'cancelled' AND ${table.claimedAt} IS NULL AND ${table.cancelledAt} IS NOT NULL)`,
     ),
     check("activities_finishes_after_start", sql`${table.finishesAt} > ${table.startedAt}`),
+    check("activities_inputs_array", sql`jsonb_typeof(${table.inputs}) = 'array'`),
   ],
 );
 
