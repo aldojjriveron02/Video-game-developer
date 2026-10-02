@@ -7,6 +7,7 @@ import {
   Map,
   ScrollText,
   Swords,
+  Trees,
 } from "lucide-react";
 
 type PlayerSection =
@@ -16,10 +17,12 @@ type PlayerSection =
   | "crafting"
   | "combat"
   | "world"
-  | "quests";
+  | "quests"
+  | "gathering";
 
 const desktopItems = [
   { id: "dashboard", href: "/dashboard", label: "Home", Icon: Home },
+  { id: "gathering", href: "/gathering", label: "Gathering", Icon: Trees },
   { id: "quests", href: "/quests", label: "Quests", Icon: ScrollText },
   { id: "world", href: "/world", label: "World", Icon: Map },
   { id: "combat", href: "/combat", label: "Combat", Icon: Swords },
