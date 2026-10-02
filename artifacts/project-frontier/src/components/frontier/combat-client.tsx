@@ -343,38 +343,66 @@ export function CombatClient({ userId }: { userId: string }) {
             {!active && (
               <section className="panel" aria-labelledby="encounters">
                 <h2 id="encounters">Frontier encounters</h2>
-                <div className="grid three">
-                  {data.enemies.map((enemy) => (
-                    <div className="item" key={enemy.id}>
-                      <div className="item-head">
-                        <strong>{enemy.name}</strong>
-                        <span className="tag">HP {enemy.maxHp}</span>
+                <p className="muted" style={{ margin: "0 0 1rem", fontSize: ".84rem" }}>
+                  Push into new regions by raising your combat rating through training and equipment.
+                </p>
+                <div className="grid" style={{ gap: "1.25rem" }}>
+                  {Array.from(new Set(data.enemies.map((enemy) => enemy.regionName))).map((regionName) => (
+                    <div key={regionName}>
+                      <div className="label" style={{ marginBottom: ".5rem" }}>{regionName}</div>
+                      <div className="grid three">
+                        {data.enemies
+                          .filter((enemy) => enemy.regionName === regionName)
+                          .map((enemy) => {
+                            const locked = data.combatRating < enemy.requiredCombatRating;
+                            return (
+                              <div className="item" key={enemy.id}>
+                                <div className="item-head">
+                                  <strong>{enemy.name}</strong>
+                                  <div className="item-actions">
+                                    <span className="tag">HP {enemy.maxHp}</span>
+                                    <span className={locked ? "tag" : "tag on"}>
+                                      {locked ? `Rating ${enemy.requiredCombatRating}` : "Unlocked"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="muted" style={{ margin: ".4rem 0 .6rem", fontSize: ".82rem" }}>
+                                  {enemy.description}
+                                </p>
+                                <div className="row"><span>Attack</span><strong className="mono">{enemy.attack}</strong></div>
+                                <div className="row"><span>Defense</span><strong className="mono">{enemy.defense}</strong></div>
+                                <div className="row">
+                                  <span>Required rating</span>
+                                  <strong className="mono">{enemy.requiredCombatRating}</strong>
+                                </div>
+                                <div className="row">
+                                  <span>Victory loot</span>
+                                  <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>{rewardText(enemy.reward)}</strong>
+                                </div>
+                                {enemy.equipmentDrop && (
+                                  <div className="row">
+                                    <span>Gear chance</span>
+                                    <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>
+                                      {Math.round(enemy.equipmentDrop.chance * 100)}% · {pretty(enemy.equipmentDrop.itemId)}
+                                    </strong>
+                                  </div>
+                                )}
+                                <button
+                                  className="btn"
+                                  style={{ width: "100%", marginTop: ".75rem" }}
+                                  onClick={() => startBattle(enemy.encounterId, enemy.name)}
+                                  disabled={busy !== null || locked}
+                                >
+                                  {locked
+                                    ? `Locked · rating ${enemy.requiredCombatRating}`
+                                    : busy === "start"
+                                      ? "Starting..."
+                                      : "Start encounter"}
+                                </button>
+                              </div>
+                            );
+                          })}
                       </div>
-                      <p className="muted" style={{ margin: ".4rem 0 .6rem", fontSize: ".82rem" }}>
-                        {enemy.description}
-                      </p>
-                      <div className="row"><span>Attack</span><strong className="mono">{enemy.attack}</strong></div>
-                      <div className="row"><span>Defense</span><strong className="mono">{enemy.defense}</strong></div>
-                      <div className="row">
-                        <span>Victory loot</span>
-                        <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>{rewardText(enemy.reward)}</strong>
-                      </div>
-                      {enemy.equipmentDrop && (
-                        <div className="row">
-                          <span>Gear chance</span>
-                          <strong className="mono" style={{ textAlign: "right", fontSize: ".76rem" }}>
-                            {Math.round(enemy.equipmentDrop.chance * 100)}% · {pretty(enemy.equipmentDrop.itemId)}
-                          </strong>
-                        </div>
-                      )}
-                      <button
-                        className="btn"
-                        style={{ width: "100%", marginTop: ".75rem" }}
-                        onClick={() => startBattle(enemy.encounterId, enemy.name)}
-                        disabled={busy !== null}
-                      >
-                        {busy === "start" ? "Starting..." : "Start encounter"}
-                      </button>
                     </div>
                   ))}
                 </div>
