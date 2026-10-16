@@ -1,0 +1,10 @@
+# Mecha Protocol — vanilla JS, static hosting. No build step, no npm install needed.
+node_modules/
+**/node_modules/
+.DS_Store
+*.log
+npm-debug.log*
+.env
+.env.*
+*.pem
+*.key
