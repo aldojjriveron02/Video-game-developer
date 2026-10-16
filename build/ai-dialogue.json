@@ -1,0 +1,57 @@
+{
+  "vex_taunts": [
+    "Your lance is slower than I expected.",
+    "How do you prioritize targets, pilot?",
+    "I've seen that maneuver before, lance.",
+    "What's your strategy this time, pilot?",
+    "You're using the same callsign, I see.",
+    "Overheating already, lance, so soon?",
+    "Do you always rely on cover, pilot?",
+    "Your evasions are predictable, lance.",
+    "How many frames have you lost, pilot?",
+    "You still favor the left flank, lance."
+  ],
+  "vex_defeat": [
+    "Lance outmaneuvered me again.",
+    "Your tactics are improving.",
+    "I see what you did.",
+    "Is this your limit?",
+    "You won this time."
+  ],
+  "vex_victory": [
+    "Your lance fell quickly today.",
+    "Did you expect that maneuver?",
+    "I saw your mistake, pilot.",
+    "You tried a new tactic.",
+    "Your callsign is familiar now."
+  ],
+  "m3_briefing": "Listen up, lance. Our intel suggests that one enemy mech, callsign VEX, is responsible for the damage we've taken so far. It's a custom frame, faster than anything we've got, and it acts twice every round - but never repeats the same strike. It also overclocks, running hot, which means it hits harder but takes harder hits too. What's more, VEX learns and remembers from prior fights, so we can't rely on any one tactic to take it down. I want all of you to keep your heads on a swivel and watch each other's backs - our priority is getting out of this alive, not just taking down VEX.",
+  "enemy_barks": [
+    "Enemy lance spotted, bearing two-seven-zero.",
+    "Hostile mechs in sight, range one-five kilometers.",
+    "Enemy unit detected, moving to intercept.",
+    "Taking fire from enemy lance, shields holding.",
+    "Incoming fire from hostile mechs, evading.",
+    "Under attack, requesting backup immediately.",
+    "Raider-3 down, repeat, Raider-3 is down.",
+    "Lost Raider-5, adjusting formation now.",
+    "Ally destroyed, regrouping to reengage.",
+    "Shot missed, target still active.",
+    "Fired and missed, retrying now.",
+    "Missed shot, reacquiring target lock.",
+    "Pressing attack, moving to flank.",
+    "Advancing to engage, watch your fire.",
+    "Closing to melee range, prepare to engage."
+  ],
+  "_meta": {
+    "generated": "2026-10-14T19:58:32.863557+00:00",
+    "source": "Aldo's Workers AI proxy (Llama) via gemini CLI",
+    "batches": {
+      "vex_taunts": 10,
+      "vex_defeat": 5,
+      "vex_victory": 5,
+      "m3_briefing": 1,
+      "enemy_barks": 15
+    }
+  }
+}

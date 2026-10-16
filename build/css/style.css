@@ -1,0 +1,131 @@
+/* Mecha Protocol — mobile-first layout */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { height:100%; overflow:hidden; background:#0a0e1a; }
+body { font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN','Hiragino Sans',-apple-system,'SF Pro Text','Segoe UI',sans-serif; color:#dfe8ff;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  -webkit-touch-callout:none; }  /* Round 218 — iOS long-press callout */
+#app { position:fixed; inset:0; overflow:hidden; }
+#terrain-layer, #unit-layer, #fx-layer { position:absolute; inset:0; width:100%; height:100%; display:block; }
+#terrain-layer { z-index:1; }
+#unit-layer { z-index:2; }
+#fx-layer { z-index:3; pointer-events:none; }
+#hud { position:absolute; inset:0; z-index:4; pointer-events:none; }
+#turn-banner { position:absolute; top:calc(env(safe-area-inset-top, 0px) + 10px); left:50%;
+  transform:translateX(-50%); font-size:15px; font-weight:700; letter-spacing:2px;
+  background:rgba(10,14,26,.85); border:1px solid #2de2e6; color:#2de2e6;
+  padding:8px 22px; border-radius:20px; text-transform:uppercase; }
+#controls { position:absolute; bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
+  left:0; right:0; display:flex; justify-content:center; gap:14px; pointer-events:auto; flex-wrap:wrap; }
+/* text-size accessibility (Round 41 — WCAG 1.4.4 / XAG 101): zoom on reading
+   surfaces only — overlays scroll so 200% reflows safely; #controls wraps */
+body[data-ts="125"] .overlay-card, body[data-ts="125"] #forecast-panel,
+body[data-ts="125"] #coach-mark, body[data-ts="125"] #turn-banner,
+body[data-ts="125"] #controls { zoom: 1.25; }
+body[data-ts="150"] .overlay-card, body[data-ts="150"] #forecast-panel,
+body[data-ts="150"] #coach-mark, body[data-ts="150"] #turn-banner,
+body[data-ts="150"] #controls { zoom: 1.5; }
+body[data-ts="200"] .overlay-card, body[data-ts="200"] #forecast-panel,
+body[data-ts="200"] #coach-mark, body[data-ts="200"] #turn-banner,
+body[data-ts="200"] #controls { zoom: 2; }
+.ctl-btn { min-width:110px; min-height:52px; font-size:16px; font-weight:700;
+  border-radius:14px; border:2px solid #2de2e6; background:rgba(10,14,26,.9);
+  color:#2de2e6; cursor:pointer; }
+.ctl-btn.primary { background:#2de2e6; color:#0a0e1a; }
+.ctl-btn:disabled { opacity:.35; }
+.ctl-btn:active { transform:scale(.96); }
+#forecast-panel { position:absolute; left:10px; right:10px;
+  bottom:calc(env(safe-area-inset-bottom, 0px) + 78px);
+  background:rgba(10,14,26,.94); border:1px solid #f9f871; border-radius:12px;
+  padding:10px 14px; font-size:14px; line-height:1.5; pointer-events:auto; }
+#forecast-panel.hidden { display:none; }
+#forecast-panel .f-title { color:#f9f871; font-weight:700; margin-bottom:4px; }
+#forecast-panel .f-bad { color:#ff5d5d; } #forecast-panel .f-good { color:#7dff8a; }
+/* full-screen overlays */
+#hangar-screen, #briefing-screen, #gameover-screen, #welcome-screen, #help-screen { position:absolute; inset:0; z-index:10;
+  background:#0a0e1a; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
+.hidden { display:none !important; }
+.overlay-card { max-width:560px; margin:0 auto; padding:calc(env(safe-area-inset-top,0px) + 18px) 16px 40px; }
+.overlay-card h1 { font-size:24px; letter-spacing:1px; color:#2de2e6; margin-bottom:6px; }
+.overlay-card h2 { font-size:17px; color:#f9f871; margin:18px 0 8px; }
+.overlay-card p { font-size:15px; line-height:1.6; color:#b9c6e8; margin-bottom:10px; }
+.big-btn { display:block; width:100%; min-height:56px; margin-top:14px; font-size:17px;
+  font-weight:700; border-radius:14px; border:none; background:#2de2e6; color:#0a0e1a; cursor:pointer; }
+.big-btn:active { transform:scale(.98); }
+.big-btn.ghost { background:transparent; border:2px solid #2de2e6; color:#2de2e6; }
+/* hangar */
+.mech-tabs { display:flex; gap:8px; margin:12px 0; }
+.mech-tab { flex:1; min-height:48px; border-radius:10px; border:2px solid #334;
+  background:#131a30; color:#dfe8ff; font-size:14px; font-weight:700; }
+.mech-tab.active { border-color:#2de2e6; color:#2de2e6; }
+#hangar-canvas { position:relative; width:100%; height:auto; border-radius:12px; background:#0d1322;
+  border:1px solid #223; display:block; }
+.part-row { display:flex; align-items:center; justify-content:space-between;
+  background:#131a30; border:1px solid #223; border-radius:10px;
+  padding:10px 12px; margin:8px 0; font-size:14px; }
+.part-row .pname { font-weight:700; } .part-row .pstat { color:#8fa0c8; font-size:12px; }
+.part-row select { min-height:44px; font-size:14px; background:#0a0e1a; color:#dfe8ff;
+  border:1px solid #2de2e6; border-radius:8px; padding:6px 8px; max-width:55%; }
+.limb-hp { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+.limb-chip { font-size:12px; background:#131a30; border:1px solid #223; border-radius:8px;
+  padding:6px 10px; color:#b9c6e8; }
+.limb-chip b { color:#7dff8a; }
+
+/* iOS Add-to-Home-Screen hint (Round 19) */
+#a2hs-hint {
+  position: fixed; left: 12px; right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 200;
+  background: #16213a; border: 1px solid #56B4E9; border-radius: 12px;
+  color: #dfe8ff; font-size: 14px; padding: 10px 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+#a2hs-x {
+  background: none; border: none; color: #8fa3c8; font-size: 18px;
+  min-width: 44px; min-height: 44px; cursor: pointer;
+}
+
+/* Help glossary (Round 24) */
+.help-item { text-align: left; margin: 12px 0; }
+.help-item h3 { margin: 0 0 4px; color: #2de2e6; font-size: 15px; }
+.help-item p { margin: 0; font-size: 14px; color: #dfe8ff; }
+.mech-tab.active, .ctl-btn.active { background: #2de2e6; color: #0a0e1a; border-color: #2de2e6; }
+
+/* FTUE coach mark (Round 29) — bottom sheet, animated in */
+#coach-mark {
+  position: fixed; left: 12px; right: 12px; bottom: 118px; z-index: 60;
+  pointer-events: none;
+}
+#coach-mark > div {
+  pointer-events: auto;
+  background: rgba(10, 16, 32, .96);
+  border: 2px solid #2de2e6; border-radius: 12px;
+  padding: 12px 14px; font-size: 14px; line-height: 1.45; color: #dfe8ff;
+  box-shadow: 0 0 24px rgba(45, 226, 230, .35);
+  animation: coach-in .35s ease-out;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+#coach-mark b { color: #2de2e6; }
+@keyframes coach-in {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+#coach-mark > button { pointer-events:auto; width:100%; margin-top:8px; }
+#save-ind { position:absolute; top:calc(env(safe-area-inset-top, 0px) + 52px); right:12px;
+  font-size:11px; color:#7dff8a; opacity:0; transition:opacity .3s; pointer-events:none;
+  background:rgba(10,14,26,.7); padding:3px 8px; border-radius:8px; }
+#save-ind.show { opacity:1; }
+.assist-note { background:rgba(45,226,230,.1); border:1px solid #2de2e6; border-radius:10px;
+  padding:10px 12px; font-size:14px; margin:10px 0; }
+.epic-tag { background:linear-gradient(135deg,#c9a0ff,#7b5cff); color:#0a0a14; font-size:11px;
+  font-weight:700; border-radius:6px; padding:2px 7px; letter-spacing:1px; }
+
+/* Round 326 — visible focus indicators (XAG-113, WCAG 2.4.11). Keyboard users
+   tabbing through buttons need a high-contrast, border-based indicator —
+   not a subtle glow. Never routes to hidden elements (all focusables visible). */
+.ctl-btn:focus-visible, .big-btn:focus-visible, button:focus-visible,
+select:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid #f9f871;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(249, 248, 113, 0.25);
+}
