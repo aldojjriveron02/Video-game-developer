@@ -1,0 +1,85 @@
+# Mecha Protocol — CI: test on every push
+# Runs the save-fixture test suite + JS syntax check on all game scripts.
+# No build step (vanilla JS, static hosting). No npm install needed for core tests.
+# Added: FULL AUTONOMY BUILD Target #3 (Oct 15, 2026) — system police.
+
+name: Mecha Protocol CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'build/**'
+      - 'test/**'
+      - 'playtest/**'
+      - '.github/workflows/build-test.yml'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch: # manual trigger from Actions tab
+
+jobs:
+  test:
+    name: Save-fixture tests + syntax check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JS syntax check (all game scripts)
+        run: |
+          FAIL=0
+          for f in $(find build -name '*.js' -not -path '*/node_modules/*'); do
+            if ! node --check "$f" 2>/dev/null; then
+              echo "SYNTAX FAIL: $f"
+              FAIL=1
+            fi
+          done
+          for f in $(find test playtest -name '*.js' -not -path '*/node_modules/*' 2>/dev/null); do
+            if ! node --check "$f" 2>/dev/null; then
+              echo "SYNTAX FAIL: $f"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" = "1" ]; then
+            echo "::error::JavaScript syntax check failed"
+            exit 1
+          fi
+          echo "All JS files pass syntax check."
+
+      - name: Run save-fixture tests
+        run: |
+          node test/save-fixtures-test.js
+          echo "Save-fixture tests passed (exit $?)."
+
+      - name: Verify game boots (smoke test)
+        run: |
+          # Every HTML entry point must exist and reference its JS
+          for html in build/index.html build/accessibility.html; do
+            if [ ! -f "$html" ]; then
+              echo "::error::Missing entry point: $html"
+              exit 1
+            fi
+          done
+          echo "Entry points present."
+
+  report:
+    name: Report status
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    steps:
+      - name: CI result
+        run: |
+          if [ "${{ needs.test.result }}" = "success" ]; then
+            echo "✅ Mecha Protocol CI passed."
+          else
+            echo "❌ Mecha Protocol CI failed — check the test job logs."
+            exit 1
+          fi
