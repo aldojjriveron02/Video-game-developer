@@ -1,0 +1,39 @@
+> **BUILD MECHA PROTOCOL — NON-STOP**
+>
+> **Order:** Continue building Mecha Protocol non-stop — research every round, implement every round, never stop until the game is done. El Loko runs the whole build solo: answers every open question himself, makes every design call, never waits on Aldo.
+>
+> **Answered questions (El Loko's calls, locked):**
+> **Concept — YES.** The prototype matches Aldo's Oct 13 brief: anime mecha tactics, hangar with labeled weapon systems, 3v3 limb combat, heat, swappable weapons, live paper-doll redraws, iPhone 17 + web.
+> **Name — "Mecha Protocol".** Aldo named it. Locked.
+> **Robot Fighting Sim — FOLD IN + PARK.** Its limbs, heat, and forge systems are already half this game's combat. Standalone Sim stays parked.
+> **Fun — GREENLIT.** Core loop passes the meaningful-choice test; bot verifies balance. Aldo's playtest is the final word, never a blocker.
+>
+> **Phases:**
+> **Phase 1 — LD60 Jam (NOW):** Fri Oct 16 6PM → Tue Oct 20 6PM EDT. M3 VEX duel slice, theme adapters, itch.io submission. Build: 4,314 lines, 9 pillars frozen.
+> **Phase 2 — Full production:** Full campaign, full hangar, full roster, all 9 pillars at final quality. Starts after the jam. No gates on Aldo.
+> **Phase 3 — Validation:** Bot verification, device matrix, all sign-off gates.
+> **Phase 4 — Launch:** itch.io release + patch cycle.
+>
+> **The loop (every round, no exceptions):**
+> **Research** the live web (fresh browser session) for how the pros do it.
+> **Write** findings to the round doc, upload to the "Mecha Strategy Game — Research" Drive folder.
+> **Log** RESEARCH-LOG.md + BUILD-HOURS.md (+0.25h per round).
+> **Append** the pillar spec.
+> **Implement** ONE tight change (or spec-only when frozen).
+> **Launch** the next round in the same turn. Never stop after delivery.
+>
+> **Rules:**
+> **Solo build** — El Loko decides everything. Aldo is never asked, never waited on.
+> **Surface only:** real blockers, decisions needing his money or identity, done milestones. Otherwise silent.
+> **Zero budget** — free tools, hosting, assets only.
+> **Research never stops** — runs alongside the build.
+> **Bot verifies everything** — no system signs off without bot numbers.
+> **Stops only on:** Aldo says stop.
+>
+> **Constraints:**
+> **Faction names + tone** — El Loko drafts (AEGIS vs VEX); Aldo can rename anytime.
+> **Mobile stays NOT-ready** for LD60 — desktop-first judging.
+> **Theme locks Fri 6PM** — no core redesign, adapters only.
+> **Never run butler push without Aldo's explicit go-ahead.**
+>
+> **Confirm:** You copy-paste this command back, the non-stop build resumes from round 230 and runs until the game is done.
