@@ -1,0 +1,83 @@
+# Mecha Protocol — jam deploy pipeline
+# [EL-LOKO · 2026-10-15] Staged by the whole-system improvement loop (Round 6 Topic 3:
+# pro indie build pipelines 2026). Pattern = the verified 2026 canonical butler +
+# GitHub Actions itch.io flow (tag-triggered; pinned Node 22; butler push from a
+# separate job; BUTLER_API_KEY only in the deploy step; concurrency cancel-in-progress).
+# Sources: https://timmykokke.com/blog/2026/2026-05-01-github-deploy-to-itch/
+#           https://vibecode.game/blog/ship-game-jam-build-claude-github-actions/
+#
+# STATUS: STAGED, NOT WIRED. Inert until Aldo approves: (1) git init + push to a
+# GitHub repo, (2) BUTLER_API_KEY secret added, (3) ITCH_GAME_SLUG repo variable set.
+# See CI-CD-SETUP.md. The workflow packages build/ exactly as the build room leaves
+# it — jam locks (JAM_BUILD, EN-only, EASY default, hangar squad-select) are the
+# build room's job before tagging, never this workflow's.
+
+name: jam-deploy
+
+on:
+  push:
+    tags:
+      - "v*"          # tag v0.1.0-jam -> packaged -> deployed
+  workflow_dispatch:  # manual run from the Actions tab
+
+concurrency:
+  group: jam-deploy
+  cancel-in-progress: true
+
+env:
+  # Aldo's itch.io account (verified Oct 14 2026). Game slug comes from the
+  # ITCH_GAME_SLUG repo variable so the slug is never hardcoded.
+  ITCH_TARGET: "aldojjriveron02/${{ vars.ITCH_GAME_SLUG }}:html"
+
+jobs:
+  package:
+    name: package static build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"   # pinned per 2026 jam discipline
+
+      - name: syntax-check shipped JS
+        run: |
+          for f in build/js/*.js; do node --check "$f" || exit 1; done
+          echo "all build/js files parse OK"
+
+      - name: assemble dist/
+        run: |
+          rm -rf dist && mkdir -p dist
+          cp -r build/* dist/
+          test -f dist/index.html || { echo "FAIL: index.html missing at dist root"; exit 1; }
+          echo "dist/ ready:" && ls dist/
+
+      - name: upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mecha-protocol-dist
+          path: dist/
+
+  deploy:
+    name: butler push to itch.io
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mecha-protocol-dist
+          path: dist/
+
+      - name: install butler
+        uses: remarkablegames/setup-butler@v2
+
+      - name: push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ -z "${{ vars.ITCH_GAME_SLUG }}" ]; then
+            echo "FAIL: set the ITCH_GAME_SLUG repo variable to the itch.io game slug"
+            exit 1
+          fi
+          butler push ./dist "$ITCH_TARGET"
